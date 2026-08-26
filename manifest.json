@@ -1,0 +1,17 @@
+{
+  "name": "HAL Garage",
+  "short_name": "HAL Garage",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#07111b",
+  "theme_color": "#07111b",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
