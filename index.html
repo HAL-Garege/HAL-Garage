@@ -42,43 +42,774 @@ input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;col
 </nav></div>
 <div class="toast" id="toast"></div>
 <script>
-const KEY='hal_garage_v1';
-const defaults={role:'admin',clients:[
-{name:'Juan Pérez',phone:'987654321',plate:'A7B-123',brand:'Toyota',model:'Hilux',type:'Camioneta / SUV',visits:4,total:120},
-{name:'María Gonzales',phone:'956222111',plate:'V4F-456',brand:'Nissan',model:'X-Trail',type:'Camioneta / SUV',visits:2,total:50}],
-prices:{'Lavado exterior':{Auto:10,'Camioneta / SUV':15,'Camioneta XL':20},'Lavado completo':{Auto:20,'Camioneta / SUV':30,'Camioneta XL':40},'Aspirado':{Auto:7,'Camioneta / SUV':10,'Camioneta XL':13},'Encerado':{Auto:15,'Camioneta / SUV':20,'Camioneta XL':20},'Lavado de motor':{Auto:8,'Camioneta / SUV':8,'Camioneta XL':8},'Pulido':{Auto:200,'Camioneta / SUV':300,'Camioneta XL':350}},
-sales:[{plate:'A7B-123',client:'Juan Pérez',service:'Lavado completo',amount:30,pay:'Yape',time:'10:35'}],
-expenses:[{concept:'Shampoo',amount:25,pay:'Efectivo',time:'09:30'}],
-products:[{name:'Shampoo Neutro',unit:'Galonera 20 L',stock:10,min:3},{name:'Espuma Activa',unit:'Galonera 20 L',stock:8,min:2},{name:'Limpia Vidrios',unit:'Botella 500 ml',stock:3,min:5},{name:'Microfibra Premium',unit:'Unidad',stock:28,min:10}],
-journey:{open:null,lunch:null,back:null,close:null,notes:''},selected:null,service:'Lavado exterior',pay:'Efectivo'};
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||defaults;
-function save(){localStorage.setItem(KEY,JSON.stringify(db))}
-function money(n){return 'S/ '+Number(n).toFixed(2)}
-function toast(t){let e=document.getElementById('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
-function go(p){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));({dashboard,clients,sale,cash,more,inventory,journey,reports,settings}[p]||dashboard)()}
-function setHTML(x){document.getElementById('app').innerHTML=x}
-function dashboard(){let i=db.sales.reduce((a,x)=>a+x.amount,0),e=db.expenses.reduce((a,x)=>a+x.amount,0);setHTML(`<div class="title">Dashboard</div><div class="date">Control de HAL Garage</div><div class="grid"><div class="card"><div class="muted">Ventas hoy</div><div class="metric green">${money(i)}</div></div><div class="card"><div class="muted">Vehículos</div><div class="metric blue">${db.sales.length}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(e)}</div></div><div class="card"><div class="muted">Resultado</div><div class="metric orange">${money(i-e)}</div></div></div><div class="card"><div class="row"><b>Jornada</b><span class="badge ok">${db.journey.close?'Cerrada':db.journey.open?'Abierta':'Pendiente'}</span></div><div class="result">🟢 ${db.journey.open||'Pendiente'} · 🟡 ${db.journey.lunch||'—'} · 🔵 ${db.journey.back||'—'} · 🔴 ${db.journey.close||'—'}</div><button class="btn alt" onclick="go('journey')">Ver jornada</button></div><div class="card"><div class="row"><b>Inventario</b><span class="badge warn">${db.products.filter(p=>p.stock<=p.min).length} bajos</span></div><button class="btn alt" onclick="go('inventory')">Ver inventario</button></div>`)}
-function clients(){setHTML(`<div class="title">Clientes</div><div class="date">Buscar por placa, nombre o teléfono</div><input id="cq" placeholder="Ej. A7B-123" oninput="filterClients()"><div id="clist">${clientRows(db.clients)}</div><button class="btn" onclick="newClient()">＋ Nuevo cliente</button>`)}
-function clientRows(a){return a.map((c,i)=>`<div class="card"><div class="muted">${c.plate}</div><b>${c.name}</b><div>${c.brand} ${c.model} · ${c.type}</div><div class="muted">${c.visits} visitas · ${money(c.total)}</div><button class="btn alt" onclick="selectClient(${i})">Usar vehículo</button></div>`).join('')||'<div class="card">No hay resultados.</div>'}
-function filterClients(){let q=document.getElementById('cq').value.toLowerCase();document.getElementById('clist').innerHTML=clientRows(db.clients.filter(c=>(c.name+c.phone+c.plate+c.brand+c.model).toLowerCase().includes(q)))}
-function newClient(){let name=prompt('Nombre completo');if(!name)return;let phone=prompt('Teléfono')||'',plate=(prompt('Placa')||'').toUpperCase();if(!plate)return;let brand=prompt('Marca')||'',model=prompt('Modelo')||'',type=prompt('Tipo: Auto / Camioneta / SUV / Camioneta XL')||'Auto';if(db.clients.some(c=>c.plate===plate))return toast('Esa placa ya está registrada');db.clients.push({name,phone,plate,brand,model,type,visits:0,total:0});save();toast('Cliente registrado');clients()}
-function selectClient(i){db.selected=i;save();go('sale')}
-function sale(){let c=db.selected!=null?db.clients[db.selected]:null;setHTML(`<div class="title">Nueva venta</div><div class="date">Placa → servicio → pago → guardar</div><div class="card"><b>1. Placa</b><input id="sp" placeholder="A7B-123" value="${c?c.plate:''}" oninput="lookupSale()"><div id="sc">${c?`<div class="result"><b>${c.name}</b><br>${c.plate} · ${c.brand} ${c.model}<br><span class="muted">${c.type}</span></div>`:'<div class="muted">Busca una placa registrada.</div>'}</div></div><div class="card"><b>2. Servicio</b>${Object.keys(db.prices).map(s=>`<div class="service ${db.service===s?'active':''}" onclick="pickService('${s}')"><span>${s}</span><b>${c?money(db.prices[s][c.type]||0):'—'}</b></div>`).join('')}</div><div class="card"><b>3. Forma de pago</b><div class="pay">${['Efectivo','Yape','Plin','Transferencia'].map(p=>`<button class="${db.pay===p?'active':''}" onclick="db.pay='${p}';save();sale()">${p}</button>`).join('')}</div></div><div class="card"><b>4. Comprobante</b><button class="btn alt" onclick="toast('📷 Cámara: se implementará en la versión conectada')">📷 Tomar foto</button><div class="muted">Yape, Plin y transferencia: obligatorio.</div></div><div class="card"><b>Resumen</b><div class="result">${c?c.name:'Sin cliente'}<br>${c?c.plate:'—'}<br>${db.service}<br><strong class="green">${c?money(db.prices[db.service][c.type]||0):'—'}</strong></div><button class="btn green" onclick="saveSale()">GUARDAR VENTA</button></div>`)}
-function lookupSale(){let q=document.getElementById('sp').value.toUpperCase();let i=db.clients.findIndex(c=>c.plate===q);db.selected=i>=0?i:null;save();sale()}
-function pickService(s){db.service=s;save();sale()}
-function saveSale(){if(db.selected==null)return toast('Selecciona una placa');let c=db.clients[db.selected],a=db.prices[db.service][c.type]||0;db.sales.push({plate:c.plate,client:c.name,service:db.service,amount:a,pay:db.pay,time:new Date().toLocaleTimeString('es-PE')});c.visits++;c.total+=a;save();toast('Venta registrada → Caja + historial');go('dashboard')}
-function cash(){let i=db.sales.reduce((a,x)=>a+x.amount,0),e=db.expenses.reduce((a,x)=>a+x.amount,0);setHTML(`<div class="title">Caja</div><div class="date">Los ingresos vienen de Ventas automáticamente.</div><div class="grid"><div class="card"><div class="muted">Ingresos</div><div class="metric green">${money(i)}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(e)}</div></div><div class="card"><div class="muted">Neto</div><div class="metric blue">${money(i-e)}</div></div><div class="card"><div class="muted">Ventas</div><div class="metric orange">${db.sales.length}</div></div></div><div class="card"><b>Medios de pago</b>${['Efectivo','Yape','Plin','Transferencia'].map(p=>`<div class="result">${p}<b style="float:right">${money(db.sales.filter(x=>x.pay===p).reduce((a,x)=>a+x.amount,0))}</b></div>`).join('')}</div><div class="card"><b>Registrar gasto</b><button class="btn alt" onclick="newExpense()">＋ Nuevo gasto</button></div>`)}
-function newExpense(){let c=prompt('Concepto');if(!c)return;let a=Number(prompt('Monto')||0);if(!a)return;let p=prompt('Pago: Efectivo / Yape / Plin / Transferencia')||'Efectivo';db.expenses.push({concept:c,amount:a,pay:p,time:new Date().toLocaleTimeString('es-PE')});save();toast('Gasto registrado');cash()}
-function inventory(){setHTML(`<div class="title">Inventario</div><div class="date">Presentaciones y unidades reales del negocio</div><div class="grid"><div class="card"><div class="muted">Productos</div><div class="metric green">${db.products.length}</div></div><div class="card"><div class="muted">Stock bajo</div><div class="metric orange">${db.products.filter(p=>p.stock<=p.min).length}</div></div></div>${db.products.map((p,i)=>`<div class="card"><div class="row"><b>${p.name}</b><span class="badge ${p.stock<=p.min?'warn':'ok'}">${p.stock<=p.min?'Stock bajo':'En stock'}</span></div><div class="muted">${p.unit} · actual ${p.stock} · mínimo ${p.min}</div><button class="btn alt" onclick="useProduct(${i})">− 1</button></div>`).join('')}<button class="btn" onclick="addProduct()">＋ Nuevo producto</button>`)}
-function useProduct(i){if(db.products[i].stock<=0)return toast('Sin stock');db.products[i].stock--;save();toast('Salida registrada');inventory()}
-function addProduct(){let n=prompt('Producto');if(!n)return;let u=prompt('Presentación/unidad')||'Unidad',s=Number(prompt('Stock inicial')||0),m=Number(prompt('Stock mínimo')||0);db.products.push({name:n,unit:u,stock:s,min:m});save();inventory()}
-function journey(){setHTML(`<div class="title">Jornada</div><div class="date">Carina · foto obligatoria por evento</div><div class="card"><div class="row"><b>Estado</b><span class="badge ${db.journey.close?'bad':db.journey.open?'ok':'warn'}">${db.journey.close?'Cerrada':db.journey.open?'Abierta':'Pendiente'}</span></div></div>${[['open','🟢','Abrir'],['lunch','🟡','Almuerzo'],['back','🔵','Regreso'],['close','🔴','Cerrar']].map(x=>`<div class="card"><div class="row"><b>${x[1]} ${x[2]}</b><span class="muted">${db.journey[x[0]]||'Pendiente'}</span></div><button class="btn ${x[0]=='close'?'red':x[0]=='open'?'green':'alt'}" onclick="eventJourney('${x[0]}')" ${db.journey[x[0]]?'disabled':''}>Registrar</button><div class="result">📷 Foto obligatoria<br><span class="muted">Hora oficial: servidor en versión conectada.</span></div></div>`).join('')}<div class="card"><b>Motivo / observación</b><select onchange="db.journey.notes=this.value;save()"><option>Seleccionar</option><option>Sin almuerzo</option><option>Permiso autorizado</option><option>Incidente</option><option>Salida anticipada autorizada</option></select></div>`)}
-function eventJourney(k){if(k==='open'&&db.journey.open)return toast('Ya está abierta');if(k!=='open'&&!db.journey.open)return toast('Primero abre la jornada');if(k==='back'&&!db.journey.lunch)return toast('Primero registra almuerzo');db.journey[k]=new Date().toLocaleTimeString('es-PE');save();toast('Evento registrado');journey()}
-function reports(){let i=db.sales.reduce((a,x)=>a+x.amount,0),e=db.expenses.reduce((a,x)=>a+x.amount,0),sv={};db.sales.forEach(s=>sv[s.service]=(sv[s.service]||0)+1);setHTML(`<div class="title">Reportes</div><div class="date">Resumen actual</div><div class="grid"><div class="card"><div class="muted">Ventas</div><div class="metric green">${db.sales.length}</div></div><div class="card"><div class="muted">Ingresos</div><div class="metric blue">${money(i)}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(e)}</div></div><div class="card"><div class="muted">Neto</div><div class="metric orange">${money(i-e)}</div></div></div><div class="card"><b>Servicios más realizados</b>${Object.entries(sv).map(([k,v])=>`<div class="result">${k}<b style="float:right">${v}</b></div>`).join('')}</div><div class="card"><b>Clientes frecuentes</b>${db.clients.slice().sort((a,b)=>b.visits-a.visits).map(c=>`<div class="result">${c.name} · ${c.plate}<b style="float:right">${c.visits}</b></div>`).join('')}</div>`)}
-function settings(){setHTML(`<div class="title">Administración</div><div class="date">Solo Eduardo puede modificar.</div><div class="card"><b>Usuarios</b><div class="result">Eduardo · Administrador</div><div class="result">Carina · Operadora · solo registrar</div></div><div class="card"><b>Tarifario</b><table class="table"><tr><th>Servicio</th><th>Auto</th><th>Cam/SUV</th><th>XL</th></tr>${Object.entries(db.prices).map(([s,p])=>`<tr><td>${s}</td><td>${money(p.Auto)}</td><td>${money(p['Camioneta / SUV'])}</td><td>${money(p['Camioneta XL'])}</td></tr>`).join('')}</table></div><div class="card"><b>Seguridad</b><p class="muted">Correcciones: autorización de Eduardo.</p><p class="muted">Fotos de jornada: obligatorias.</p><p class="muted">Eliminación por operadora: bloqueada.</p></div>`)}
-function more(){setHTML(`<div class="title">Más</div><div class="date">Módulos restantes</div><div class="card"><b>📦 Inventario</b><button class="btn alt" onclick="go('inventory')">Abrir</button></div><div class="card"><b>🕐 Jornada</b><button class="btn alt" onclick="go('journey')">Abrir</button></div><div class="card"><b>📊 Reportes</b><button class="btn alt" onclick="go('reports')">Abrir</button></div><div class="card"><b>⚙️ Administración</b><button class="btn alt" onclick="go('settings')">Abrir</button></div>`)}
-document.getElementById('userLabel').textContent='Eduardo · Admin';
-go('dashboard');
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  /* =====================================================
+   HAL GARAGE — SISTEMA PRINCIPAL
+   Supabase + Autenticación + Dashboard + Clientes
+   ===================================================== */
+
+let HAL_USER = null;
+let selectedClient = null;
+
+/* =====================================================
+   UTILIDADES
+   ===================================================== */
+
+function money(n) {
+  return 'S/ ' + Number(n || 0).toFixed(2);
+}
+
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.padding = '12px 16px';
+  el.style.position = 'fixed';
+  el.style.bottom = '90px';
+  el.style.left = '50%';
+  el.style.transform = 'translateX(-50%)';
+  el.style.zIndex = '99999';
+  el.style.borderRadius = '12px';
+  el.style.background = type === 'error' ? '#b42318' : '#16803c';
+  el.style.color = '#fff';
+
+  setTimeout(() => {
+    el.style.display = 'none';
+  }, 2500);
+}
+
+function setHTML(html) {
+  const app = document.getElementById('app');
+  if (app) app.innerHTML = html;
+}
+
+/* =====================================================
+   LOGIN
+   ===================================================== */
+
+function showLogin() {
+
+  const old = document.getElementById('halLogin');
+  if (old) old.remove();
+
+  document.body.insertAdjacentHTML('afterbegin', `
+    <div id="halLogin"
+      style="
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      background:#07111b;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      box-sizing:border-box">
+
+      <div style="
+        width:100%;
+        max-width:390px;
+        background:#0e1d2a;
+        border:1px solid #263b4d;
+        border-radius:22px;
+        padding:28px;
+        box-sizing:border-box">
+
+        <div style="
+          text-align:center;
+          font-size:30px;
+          font-weight:800;
+          margin-bottom:8px">
+
+          <span style="color:white">HAL</span>
+          <span style="color:#4d8dff"> GARAGE</span>
+
+        </div>
+
+        <div style="
+          text-align:center;
+          color:#8da2b5;
+          margin-bottom:25px">
+
+          Sistema de gestión
+
+        </div>
+
+        <input id="halEmail"
+          type="email"
+          placeholder="Correo electrónico"
+          style="
+          width:100%;
+          box-sizing:border-box;
+          padding:14px;
+          margin-bottom:12px;
+          border-radius:12px;
+          border:1px solid #31495c;
+          background:#07111b;
+          color:white">
+
+        <input id="halPassword"
+          type="password"
+          placeholder="Contraseña"
+          style="
+          width:100%;
+          box-sizing:border-box;
+          padding:14px;
+          margin-bottom:15px;
+          border-radius:12px;
+          border:1px solid #31495c;
+          background:#07111b;
+          color:white">
+
+        <button onclick="loginHAL()"
+          style="
+          width:100%;
+          padding:14px;
+          border:0;
+          border-radius:12px;
+          background:#2675ff;
+          color:white;
+          font-size:16px;
+          font-weight:700">
+
+          INGRESAR
+
+        </button>
+
+        <div id="halLoginMsg"
+          style="
+          min-height:24px;
+          margin-top:15px;
+          text-align:center;
+          color:#ff7777">
+
+        </div>
+
+      </div>
+    </div>
+  `);
+}
+
+async function loginHAL() {
+
+  const email =
+    document.getElementById('halEmail').value.trim();
+
+  const password =
+    document.getElementById('halPassword').value;
+
+  const msg =
+    document.getElementById('halLoginMsg');
+
+  if (!email || !password) {
+    msg.textContent = 'Completa correo y contraseña.';
+    return;
+  }
+
+  msg.textContent = 'Ingresando...';
+
+  const { data, error } =
+    await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if (error) {
+    console.error(error);
+    msg.textContent = 'Correo o contraseña incorrectos.';
+    return;
+  }
+
+  await loadUser(data.user);
+}
+
+async function loadUser(user) {
+
+  const { data, error } =
+    await supabase
+      .from('profiles')
+      .select('id,full_name,role,active')
+      .eq('id', user.id)
+      .maybeSingle();
+
+  if (error) {
+    console.error(error);
+    toast('Error cargando usuario', 'error');
+    return;
+  }
+
+  if (!data) {
+    toast('Perfil no configurado', 'error');
+    await supabase.auth.signOut();
+    return;
+  }
+
+  if (!data.active) {
+    toast('Usuario desactivado', 'error');
+    await supabase.auth.signOut();
+    return;
+  }
+
+  HAL_USER = {
+    id: user.id,
+    email: user.email,
+    name: data.full_name,
+    role: data.role
+  };
+
+  const login = document.getElementById('halLogin');
+  if (login) login.remove();
+
+  updateUserLabel();
+
+  go('dashboard');
+}
+
+function updateUserLabel() {
+
+  const el = document.getElementById('userLabel');
+
+  if (el && HAL_USER) {
+    el.textContent =
+      HAL_USER.name + ' · ' + HAL_USER.role;
+  }
+}
+
+async function logoutHAL() {
+
+  await supabase.auth.signOut();
+
+  HAL_USER = null;
+
+  showLogin();
+}
+
+/* =====================================================
+   DASHBOARD
+   ===================================================== */
+
+async function dashboard() {
+
+  setHTML(`
+    <div class="title">
+      Dashboard
+    </div>
+
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px">
+
+      <div class="card">
+        <small>Ventas de hoy</small>
+        <h2 id="dashSales">S/ 0.00</h2>
+      </div>
+
+      <div class="card">
+        <small>Vehículos</small>
+        <h2 id="dashVehicles">0</h2>
+      </div>
+
+      <div class="card">
+        <small>Gastos de hoy</small>
+        <h2 id="dashExpenses">S/ 0.00</h2>
+      </div>
+
+      <div class="card">
+        <small>Resultado</small>
+        <h2 id="dashResult">S/ 0.00</h2>
+      </div>
+
+    </div>
+
+    <div class="card" style="margin-top:15px">
+      <h3>Accesos rápidos</h3>
+
+      <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px">
+
+        <button onclick="go('clients')">
+          👤 Clientes
+        </button>
+
+        <button onclick="go('sale')">
+          ➕ Nueva venta
+        </button>
+
+        <button onclick="go('cash')">
+          💰 Caja
+        </button>
+
+        <button onclick="go('more')">
+          ☰ Más
+        </button>
+
+      </div>
+    </div>
+  `);
+
+  await loadDashboardData();
+}
+
+async function loadDashboardData() {
+
+  const today =
+    new Date().toISOString().slice(0,10);
+
+  const start = today + 'T00:00:00';
+  const end = today + 'T23:59:59';
+
+  const { data: sales } =
+    await supabase
+      .from('sales')
+      .select('total')
+      .gte('created_at', start)
+      .lte('created_at', end);
+
+  const { data: expenses } =
+    await supabase
+      .from('expenses')
+      .select('amount')
+      .gte('created_at', start)
+      .lte('created_at', end);
+
+  const { count: vehicles } =
+    await supabase
+      .from('vehicles')
+      .select('*', {
+        count:'exact',
+        head:true
+      })
+      .eq('active', true);
+
+  const totalSales =
+    (sales || []).reduce(
+      (a,b) => a + Number(b.total || 0), 0
+    );
+
+  const totalExpenses =
+    (expenses || []).reduce(
+      (a,b) => a + Number(b.amount || 0), 0
+    );
+
+  const result =
+    totalSales - totalExpenses;
+
+  const s = document.getElementById('dashSales');
+  const v = document.getElementById('dashVehicles');
+  const e = document.getElementById('dashExpenses');
+  const r = document.getElementById('dashResult');
+
+  if (s) s.textContent = money(totalSales);
+  if (v) v.textContent = vehicles || 0;
+  if (e) e.textContent = money(totalExpenses);
+  if (r) r.textContent = money(result);
+}
+
+/* =====================================================
+   CLIENTES
+   ===================================================== */
+
+async function clients() {
+
+  setHTML(`
+    <div class="title">
+      Clientes
+    </div>
+
+    <div style="
+      display:flex;
+      gap:8px;
+      margin-bottom:15px">
+
+      <input
+        id="clientSearch"
+        placeholder="Buscar cliente..."
+        oninput="filterClients()">
+
+      <button onclick="newClient()">
+        + Nuevo
+      </button>
+
+    </div>
+
+    <div id="clientList">
+      Cargando clientes...
+    </div>
+  `);
+
+  await loadClients();
+}
+
+async function loadClients() {
+
+  const { data, error } =
+    await supabase
+      .from('clients')
+      .select('*')
+      .eq('active', true)
+      .order('full_name');
+
+  if (error) {
+    console.error(error);
+    toast('Error cargando clientes', 'error');
+    return;
+  }
+
+  window.HAL_CLIENTS = data || [];
+
+  renderClients(window.HAL_CLIENTS);
+}
+
+function renderClients(list) {
+
+  const box =
+    document.getElementById('clientList');
+
+  if (!box) return;
+
+  if (!list.length) {
+
+    box.innerHTML = `
+      <div class="card">
+        No hay clientes registrados.
+      </div>
+    `;
+
+    return;
+  }
+
+  box.innerHTML = list.map(c => `
+
+    <div class="card"
+      style="margin-bottom:10px">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center">
+
+        <div>
+
+          <strong>${escapeHTML(c.full_name)}</strong>
+
+          <div style="opacity:.7">
+            ${escapeHTML(c.phone || 'Sin teléfono')}
+          </div>
+
+        </div>
+
+        <button onclick="selectClient('${c.id}')">
+          Ver
+        </button>
+
+      </div>
+
+    </div>
+
+  `).join('');
+}
+
+function filterClients() {
+
+  const q =
+    document
+      .getElementById('clientSearch')
+      .value
+      .toLowerCase();
+
+  const list =
+    (window.HAL_CLIENTS || [])
+      .filter(c =>
+        c.full_name.toLowerCase().includes(q) ||
+        (c.phone || '').includes(q)
+      );
+
+  renderClients(list);
+}
+
+async function newClient() {
+
+  const name =
+    prompt('Nombre completo del cliente:');
+
+  if (!name) return;
+
+  const phone =
+    prompt('Teléfono:') || null;
+
+  const { error } =
+    await supabase
+      .from('clients')
+      .insert({
+        full_name:name.trim(),
+        phone:phone,
+        active:true,
+        created_by:HAL_USER.id
+      });
+
+  if (error) {
+
+    console.error(error);
+    toast('No se pudo crear el cliente', 'error');
+    return;
+  }
+
+  toast('Cliente registrado');
+
+  await loadClients();
+}
+
+async function selectClient(id) {
+
+  const { data, error } =
+    await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+  if (error) {
+    toast('Error cargando cliente', 'error');
+    return;
+  }
+
+  selectedClient = data;
+
+  setHTML(`
+    <div class="title">
+      Cliente
+    </div>
+
+    <div class="card">
+
+      <h2>
+        ${escapeHTML(data.full_name)}
+      </h2>
+
+      <p>
+        📞 ${escapeHTML(data.phone || 'Sin teléfono')}
+      </p>
+
+      <button onclick="loadClientVehicles('${data.id}')">
+        🚗 Ver vehículos
+      </button>
+
+      <button onclick="go('clients')">
+        ← Volver
+      </button>
+
+    </div>
+
+    <div id="clientVehicles"></div>
+  `);
+
+  await loadClientVehicles(data.id);
+}
+
+async function loadClientVehicles(clientId) {
+
+  const box =
+    document.getElementById('clientVehicles');
+
+  if (!box) return;
+
+  const { data, error } =
+    await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('active', true)
+      .order('plate');
+
+  if (error) {
+    console.error(error);
+    box.innerHTML =
+      '<div class="card">Error cargando vehículos.</div>';
+    return;
+  }
+
+  box.innerHTML = `
+
+    <div class="card">
+
+      <h3>Vehículos</h3>
+
+      ${
+        data.length
+        ? data.map(v => `
+          <div style="
+            padding:12px 0;
+            border-bottom:1px solid #263b4d">
+
+            <strong>
+              🚗 ${escapeHTML(v.plate)}
+            </strong>
+
+            <div style="opacity:.7">
+              ${escapeHTML(v.brand || '')}
+              ${escapeHTML(v.model || '')}
+            </div>
+
+          </div>
+        `).join('')
+        : '<p>No tiene vehículos registrados.</p>'
+      }
+
+    </div>
+  `;
+}
+
+/* =====================================================
+   NAVEGACIÓN
+   ===================================================== */
+
+function go(page) {
+
+  document
+    .querySelectorAll('.nav button')
+    .forEach(b => b.classList.remove('active'));
+
+  const button =
+    document.querySelector(
+      `.nav button[data-page="${page}"]`
+    );
+
+  if (button) button.classList.add('active');
+
+  if (page === 'dashboard') dashboard();
+  else if (page === 'clients') clients();
+  else if (page === 'sale') sale();
+  else if (page === 'cash') cash();
+  else if (page === 'more') more();
+  else dashboard();
+}
+
+/* =====================================================
+   PANTALLAS TEMPORALES
+   Las convertiremos en módulos completos en el
+   siguiente bloque.
+   ===================================================== */
+
+function sale() {
+
+  setHTML(`
+    <div class="title">Nueva venta</div>
+
+    <div class="card">
+
+      <h3>Módulo de ventas</h3>
+
+      <p>
+        Aquí conectaremos clientes,
+        vehículos, servicios, precios
+        y pagos directamente con Supabase.
+      </p>
+
+      <button onclick="go('clients')">
+        👤 Seleccionar cliente
+      </button>
+
+    </div>
+  `);
+}
+
+function cash() {
+
+  setHTML(`
+    <div class="title">Caja</div>
+
+    <div class="card">
+
+      <h3>Control de caja</h3>
+
+      <p>
+        Aquí mostraremos ingresos,
+        egresos y saldo real.
+      </p>
+
+    </div>
+  `);
+}
+
+function more() {
+
+  setHTML(`
+    <div class="title">Más</div>
+
+    <div class="card">
+
+      <button onclick="go('dashboard')">
+        🏠 Inicio
+      </button>
+
+      <button onclick="logoutHAL()">
+        🚪 Cerrar sesión
+      </button>
+
+    </div>
+  `);
+}
+
+/* =====================================================
+   SEGURIDAD
+   ===================================================== */
+
+function escapeHTML(value) {
+
+  return String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+/* =====================================================
+   INICIO
+   ===================================================== */
+
+async function iniciarHAL() {
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if (session?.user) {
+
+    await loadUser(session.user);
+
+  } else {
+
+    showLogin();
+
+  }
+}
+
+supabase.auth.onAuthStateChange(
+  async (event, session) => {
+
+    if (
+      event === 'SIGNED_IN' &&
+      session?.user
+    ) {
+
+      await loadUser(session.user);
+
+    }
+
+    if (event === 'SIGNED_OUT') {
+
+      HAL_USER = null;
+      showLogin();
+
+    }
+
+  }
+);
+
+iniciarHAL();
 </script>
 </body></html>
