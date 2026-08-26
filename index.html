@@ -7,6 +7,18 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
 <title>HAL Garage</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
+
+const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+</script>
 <style>
 :root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--red:#ff6262;--orange:#ffb52e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:480px;margin:auto;min-height:100vh;background:#091722}
