@@ -275,13 +275,17 @@ function updateUserLabel() {
   }
 }
 
-async function logoutHAL() {
+asyncasync function logoutHAL() {
 
-  await supabase.auth.signOut();
+    try {
+        await supabase.auth.signOut();
+    } catch (error) {
+        console.error("Error cerrando sesión:", error);
+    }
 
-  HAL_USER = null;
+    HAL_USER = null;
 
-  showLogin();
+    showLogin();
 }
 
 /* =====================================================
