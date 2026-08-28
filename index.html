@@ -276,15 +276,9 @@ function updateUserLabel() {
 }
 
 async function logoutHAL() {
-    try {
-        await supabase.auth.signOut();
-    } catch (error) {
-        console.error("Error cerrando sesión:", error);
-    }
-
-    HAL_USER = null;
-
-    window.location.reload();
+  try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+  HAL_USER = null;
+  showLogin();
 }
 
 /* =====================================================
@@ -343,6 +337,10 @@ async function dashboard() {
 
         <button onclick="go('cash')">
           💰 Caja
+        </button>
+
+        <button onclick="go('attendance')">
+          👷 Personal
         </button>
 
         <button onclick="go('more')">
@@ -686,6 +684,7 @@ function go(page) {
   else if (page === 'clients') clients();
   else if (page === 'sale') sale();
   else if (page === 'cash') cash();
+  else if (page === 'attendance') attendance();
   else if (page === 'more') more();
   else dashboard();
 }
@@ -696,65 +695,284 @@ function go(page) {
    siguiente bloque.
    ===================================================== */
 
-function sale() {
+async function sale() {
 
   setHTML(`
-    <div class="title">Nueva venta</div>
+    <div class="title">Nueva atención</div>
+    <div class="date">Registra el servicio y el pago en un solo paso.</div>
 
     <div class="card">
+      <h3>1. Cliente</h3>
+      <input id="saleClientSearch" placeholder="Buscar por nombre o teléfono" oninput="filterSaleClients()">
+      <div id="saleClientResults"></div>
+      <div id="saleSelectedClient"></div>
+    </div>
 
-      <h3>Módulo de ventas</h3>
+    <div class="card" id="saleVehicleCard" style="display:none">
+      <h3>2. Vehículo</h3>
+      <div id="saleVehicleList">Cargando vehículos...</div>
+    </div>
 
-      <p>
-        Aquí conectaremos clientes,
-        vehículos, servicios, precios
-        y pagos directamente con Supabase.
-      </p>
+    <div class="card" id="saleServiceCard" style="display:none">
+      <h3>3. Servicio</h3>
+      <div id="saleServiceList">Cargando servicios...</div>
+      <div class="row" style="margin-top:14px"><strong>Total</strong><strong id="saleTotal">S/ 0.00</strong></div>
+    </div>
 
-      <button onclick="go('clients')">
-        👤 Seleccionar cliente
-      </button>
-
+    <div class="card" id="salePaymentCard" style="display:none">
+      <h3>4. Pago</h3>
+      <div class="pay">
+        <button id="pay_cash" onclick="selectSalePayment('cash')">💵 Efectivo</button>
+        <button id="pay_yape" onclick="selectSalePayment('yape')">📱 Yape</button>
+        <button id="pay_plin" onclick="selectSalePayment('plin')">📱 Plin</button>
+        <button id="pay_transfer" onclick="selectSalePayment('transfer')">🏦 Transferencia</button>
+      </div>
+      <button class="btn green" id="finishSaleBtn" onclick="finishSale()" disabled>✅ FINALIZAR ATENCIÓN</button>
     </div>
   `);
+
+  window.HAL_SALE = {client:null, vehicle:null, service:null, payment:null, services:[]};
+  await loadSaleClients();
 }
 
-function cash() {
-
-  setHTML(`
-    <div class="title">Caja</div>
-
-    <div class="card">
-
-      <h3>Control de caja</h3>
-
-      <p>
-        Aquí mostraremos ingresos,
-        egresos y saldo real.
-      </p>
-
-    </div>
-  `);
+async function loadSaleClients() {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id,full_name,phone')
+    .eq('active', true)
+    .order('full_name');
+  if (error) { console.error(error); toast('Error cargando clientes','error'); return; }
+  window.HAL_SALE_CLIENTS = data || [];
+  filterSaleClients();
 }
 
-function more() {
-
-  setHTML(`
-    <div class="title">Más</div>
-
-    <div class="card">
-
-      <button onclick="go('dashboard')">
-        🏠 Inicio
-      </button>
-
-      <button onclick="logoutHAL()">
-        🚪 Cerrar sesión
-      </button>
-
-    </div>
-  `);
+function filterSaleClients() {
+  const q = (document.getElementById('saleClientSearch')?.value || '').toLowerCase().trim();
+  const list = (window.HAL_SALE_CLIENTS || []).filter(c =>
+    !q || c.full_name.toLowerCase().includes(q) || (c.phone || '').includes(q)
+  ).slice(0, 20);
+  const box = document.getElementById('saleClientResults');
+  if (!box) return;
+  box.innerHTML = list.length ? list.map(c => `
+    <div class="result" onclick="chooseSaleClient('${c.id}')" style="cursor:pointer">
+      <strong>${escapeHTML(c.full_name)}</strong><div style="opacity:.7">${escapeHTML(c.phone || 'Sin teléfono')}</div>
+    </div>`).join('') : '<div class="muted">No se encontraron clientes.</div>';
 }
+
+async function chooseSaleClient(id) {
+  const client = (window.HAL_SALE_CLIENTS || []).find(c => c.id === id);
+  if (!client) return;
+  window.HAL_SALE.client = client;
+  const results = document.getElementById('saleClientResults');
+  if (results) results.innerHTML = '';
+  const search = document.getElementById('saleClientSearch');
+  if (search) search.value = '';
+  document.getElementById('saleSelectedClient').innerHTML = `
+    <div class="result"><div class="row"><div><strong>👤 ${escapeHTML(client.full_name)}</strong><div>${escapeHTML(client.phone || 'Sin teléfono')}</div></div><button onclick="clearSaleClient()">Cambiar</button></div></div>`;
+  document.getElementById('saleVehicleCard').style.display = 'block';
+  await loadSaleVehicles(client.id);
+}
+
+function clearSaleClient() {
+  window.HAL_SALE = {client:null, vehicle:null, service:null, payment:null, services:[]};
+  const selected = document.getElementById('saleSelectedClient'); if (selected) selected.innerHTML = '';
+  document.getElementById('saleVehicleCard').style.display = 'none';
+  document.getElementById('saleServiceCard').style.display = 'none';
+  document.getElementById('salePaymentCard').style.display = 'none';
+  filterSaleClients();
+}
+
+async function loadSaleVehicles(clientId) {
+  const box = document.getElementById('saleVehicleList');
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('id,plate,brand,model,vehicle_type_id,vehicle_types(name)')
+    .eq('client_id', clientId)
+    .eq('active', true)
+    .order('plate');
+  if (error) { console.error(error); box.innerHTML='<div class="muted">Error cargando vehículos.</div>'; return; }
+  if (!data?.length) {
+    box.innerHTML = '<div class="muted">Este cliente no tiene vehículos registrados todavía.</div><button class="btn" onclick="go(\'clients\')">Ir a Clientes para registrar vehículo</button>';
+    return;
+  }
+  box.innerHTML = data.map(v => `
+    <div class="service" id="saleVehicle_${v.id}" onclick="chooseSaleVehicle('${v.id}')" style="cursor:pointer">
+      <div><strong>🚗 ${escapeHTML(v.plate)}</strong><div style="opacity:.7">${escapeHTML(v.brand || '')} ${escapeHTML(v.model || '')}</div></div>
+      <span class="badge">${escapeHTML(v.vehicle_types?.name || 'Vehículo')}</span>
+    </div>`).join('');
+  window.HAL_SALE_VEHICLES = data;
+}
+
+async function chooseSaleVehicle(id) {
+  const vehicle = (window.HAL_SALE_VEHICLES || []).find(v => v.id === id);
+  if (!vehicle) return;
+  window.HAL_SALE.vehicle = vehicle;
+  document.querySelectorAll('[id^="saleVehicle_"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('saleVehicle_' + id)?.classList.add('active');
+  document.getElementById('saleServiceCard').style.display = 'block';
+  document.getElementById('salePaymentCard').style.display = 'block';
+  await loadSaleServices(vehicle.vehicle_type_id);
+  updateSaleReady();
+}
+
+async function loadSaleServices(vehicleTypeId) {
+  const box = document.getElementById('saleServiceList');
+  const { data, error } = await supabase
+    .from('service_prices')
+    .select('id,service_id,vehicle_type_id,price,services(id,name,description)')
+    .eq('vehicle_type_id', vehicleTypeId)
+    .eq('active', true);
+  if (error) { console.error(error); box.innerHTML='<div class="muted">Error cargando precios.</div>'; return; }
+  const services = (data || []).filter(x => x.services?.active !== false);
+  window.HAL_SALE.services = services;
+  if (!services.length) {
+    box.innerHTML = '<div class="card" style="margin-top:0">No hay precios configurados para este tipo de vehículo. Configura <b>service_prices</b> en Supabase antes de vender.</div>';
+    return;
+  }
+  box.innerHTML = services.map(x => `
+    <div class="service" id="saleService_${x.service_id}" onclick="chooseSaleService('${x.service_id}')" style="cursor:pointer">
+      <div><strong>${escapeHTML(x.services.name)}</strong><div style="opacity:.7">${escapeHTML(x.services.description || '')}</div></div>
+      <strong>${money(x.price)}</strong>
+    </div>`).join('');
+}
+
+function chooseSaleService(serviceId) {
+  const service = (window.HAL_SALE.services || []).find(x => x.service_id === serviceId);
+  if (!service) return;
+  window.HAL_SALE.service = service;
+  document.querySelectorAll('[id^="saleService_"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('saleService_' + serviceId)?.classList.add('active');
+  const total = document.getElementById('saleTotal'); if (total) total.textContent = money(service.price);
+  updateSaleReady();
+}
+
+function selectSalePayment(method) {
+  window.HAL_SALE.payment = method;
+  document.querySelectorAll('[id^="pay_"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('pay_' + method)?.classList.add('active');
+  updateSaleReady();
+}
+
+function updateSaleReady() {
+  const b = document.getElementById('finishSaleBtn');
+  if (b) b.disabled = !(window.HAL_SALE?.client && window.HAL_SALE?.vehicle && window.HAL_SALE?.service && window.HAL_SALE?.payment);
+}
+
+async function finishSale() {
+  const s = window.HAL_SALE;
+  if (!s?.client || !s.vehicle || !s.service || !s.payment || !HAL_USER) return;
+  const btn = document.getElementById('finishSaleBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  const total = Number(s.service.price);
+  try {
+    const { data: sale, error: saleError } = await supabase.from('sales').insert({
+      client_id:s.client.id,
+      vehicle_id:s.vehicle.id,
+      total,
+      status:'confirmed',
+      created_by:HAL_USER.id
+    }).select('id,sale_number').single();
+    if (saleError) throw saleError;
+
+    const { error: itemError } = await supabase.from('sale_items').insert({
+      sale_id:sale.id,
+      service_id:s.service.service_id,
+      vehicle_type_id:s.vehicle.vehicle_type_id,
+      service_name_snapshot:s.service.services.name,
+      price_applied:total,
+      quantity:1,
+      subtotal:total
+    });
+    if (itemError) throw itemError;
+
+    const { error: paymentError } = await supabase.from('payments').insert({
+      sale_id:sale.id,
+      method:s.payment,
+      amount:total,
+      created_by:HAL_USER.id
+    });
+    if (paymentError) throw paymentError;
+
+    const { error: cashError } = await supabase.from('cash_movements').insert({
+      movement_type:'income',
+      payment_method:s.payment,
+      amount:total,
+      sale_id:sale.id,
+      created_by:HAL_USER.id
+    });
+    if (cashError) throw cashError;
+
+    toast('Atención registrada correctamente');
+    setHTML(`<div class="title">✅ Atención registrada</div><div class="card"><h2>${money(total)}</h2><p>Venta N.º ${escapeHTML(sale.sale_number)}</p><p>Cliente: ${escapeHTML(s.client.full_name)}</p><p>Placa: ${escapeHTML(s.vehicle.plate)}</p><p>Servicio: ${escapeHTML(s.service.services.name)}</p><p>Pago: ${escapeHTML(s.payment)}</p><button class="btn green" onclick="go('sale')">➕ Nueva atención</button><button class="btn alt" onclick="go('dashboard')">🏠 Ir al inicio</button></div>`);
+  } catch (err) {
+    console.error(err);
+    toast('No se pudo registrar la atención. Revisa los permisos RLS.','error');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ FINALIZAR ATENCIÓN'; }
+  }
+}
+
+async function cash() {
+  setHTML(`<div class="title">Caja</div><div class="date">Ingresos, egresos y saldo real</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="card"><small>Ingresos</small><h2 id="cashIncome">S/ 0.00</h2></div><div class="card"><small>Egresos</small><h2 id="cashExpense">S/ 0.00</h2></div></div>
+  <div class="card"><small>Saldo actual</small><h2 class="green" id="cashBalance">S/ 0.00</h2></div>
+  <button class="btn red" onclick="newExpense()">➖ Registrar egreso</button>
+  <div class="card"><h3>Últimos movimientos</h3><div id="cashList">Cargando...</div></div>`);
+  await loadCash();
+}
+async function loadCash(){
+  const box=document.getElementById('cashList');
+  const {data,error}=await supabase.from('cash_movements').select('id,movement_type,payment_method,amount,created_at').order('created_at',{ascending:false}).limit(100);
+  if(error){box.innerHTML='Error: '+escapeHTML(error.message);return;}
+  let income=0,expense=0;(data||[]).forEach(x=>x.movement_type==='income'?income+=Number(x.amount||0):expense+=Number(x.amount||0));
+  document.getElementById('cashIncome').textContent=money(income);document.getElementById('cashExpense').textContent=money(expense);document.getElementById('cashBalance').textContent=money(income-expense);
+  box.innerHTML=(data||[]).map(x=>`<div class="result"><div class="row"><strong>${x.movement_type==='income'?'🟢 Ingreso':'🔴 Egreso'}</strong><strong>${money(x.amount)}</strong></div><div class="muted">${escapeHTML(x.payment_method||'')} · ${new Date(x.created_at).toLocaleString('es-PE')}</div></div>`).join('')||'<div class="muted">Sin movimientos.</div>';
+}
+function newExpense(){const concept=prompt('Concepto del egreso:');if(!concept)return;const amount=Number(prompt('Monto en soles:'));if(!amount||amount<=0){toast('Monto inválido','error');return;}const method=(prompt('Forma de pago: cash / yape / plin / transfer','cash')||'cash').trim().toLowerCase();saveExpense(concept.trim(),amount,method)}
+async function saveExpense(concept,amount,method){
+  const {data,error}=await supabase.from('expenses').insert({concept,category:'General',amount,payment_method:method,created_by:HAL_USER.id}).select('id').single();
+  if(error){toast('No se pudo registrar el egreso: '+error.message,'error');return;}
+  const {error:ce}=await supabase.from('cash_movements').insert({movement_type:'expense',payment_method:method,amount,expense_id:data.id,created_by:HAL_USER.id});
+  if(ce){toast('Egreso guardado, pero caja devolvió error: '+ce.message,'error');return;}toast('Egreso registrado');await loadCash();
+}
+
+/* =====================================================
+   PERSONAL / ASISTENCIA
+   ===================================================== */
+function isAdmin(){return ['admin','administrator','administrador','manager','gerente'].includes(String(HAL_USER?.role||'').toLowerCase())}
+async function attendance(){
+  setHTML(`<div class="title">Personal</div><div class="date">Asistencia con foto y hora automática</div>
+  <div class="card"><h3>Mi jornada de hoy</h3><div id="myAttendance">Cargando...</div><div id="attendanceActions"></div></div>
+  ${isAdmin()?'<div class="card"><h3>Personal activo</h3><div id="staffList">Cargando...</div></div><div class="card"><h3>Marcaciones de hoy</h3><div id="staffAttendance">Cargando...</div></div>':''}`);
+  await renderMyAttendance();if(isAdmin())await renderStaffAttendance();
+}
+async function getTodayWorkday(userId){const {data,error}=await supabase.from('workdays').select('*').eq('operator_id',userId).eq('work_date',new Date().toISOString().slice(0,10)).order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)console.error(error);return data}
+async function getWorkdayEvents(id){const {data,error}=await supabase.from('workday_events').select('*').eq('workday_id',id).order('occurred_at');if(error)console.error(error);return data||[]}
+function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.includes('entry'))return'entry';if(!t.includes('break_start'))return'break_start';if(!t.includes('break_end'))return'break_end';if(!t.includes('exit'))return'exit';return null}
+async function renderMyAttendance(){
+  const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;const wd=await getTodayWorkday(HAL_USER.id);
+  if(!wd){box.innerHTML='<span class="badge warn">Sin entrada registrada</span>';actions.innerHTML='<button class="btn green" onclick="markAttendance(\'entry\')">📸 MARCAR ENTRADA</button>';return;}
+  const ev=await getWorkdayEvents(wd.id),labels={entry:'🟢 Entrada',break_start:'🍽️ Inicio refrigerio',break_end:'🔄 Fin refrigerio',exit:'🔴 Salida'};
+  box.innerHTML=ev.map(e=>`<div class="result"><div class="row"><strong>${labels[e.event_type]||e.event_type}</strong><span>${new Date(e.occurred_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="muted">${e.photo_path?'📷 Foto registrada':'Sin foto'}</div></div>`).join('');
+  const n=nextEvent(ev),lab={break_start:'🍽️ INICIAR REFRIGERIO',break_end:'🔄 TERMINAR REFRIGERIO',exit:'📸 MARCAR SALIDA'};actions.innerHTML=n?`<button class="btn ${n==='exit'?'red':'green'}" onclick="markAttendance('${n}')">${lab[n]}</button>`:'<span class="badge ok">Jornada completa</span>';
+}
+async function takeAttendancePhoto(){return new Promise(resolve=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='user';input.onchange=()=>{const file=input.files?.[0];if(!file){resolve(null);return;}const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=720,scale=Math.min(1,max/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',.72))};img.src=url};input.click()})}
+async function markAttendance(type){
+  if(!HAL_USER)return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
+  if(type==='entry'&&!wd){const {data,error}=await supabase.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
+  if(!wd){toast('No existe jornada para esta marcación','error');return;}
+  const {error}=await supabase.from('workday_events').insert({workday_id:wd.id,event_type:type,occurred_at:new Date().toISOString(),photo_path:photo,created_by:HAL_USER.id});
+  if(error){toast('No se pudo guardar: '+error.message,'error');return;}if(type==='exit')await supabase.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',wd.id);
+  toast(type==='entry'?'Entrada registrada':type==='exit'?'Salida registrada':'Marcación registrada');await renderMyAttendance();
+}
+async function renderStaffAttendance(){
+  const staff=document.getElementById('staffList'),today=document.getElementById('staffAttendance');if(!staff)return;
+  const {data:profiles,error}=await supabase.from('profiles').select('id,full_name,role,active').eq('active',true).order('full_name');if(error){staff.innerHTML=escapeHTML(error.message);return;}
+  staff.innerHTML=(profiles||[]).map(p=>`<div class="result"><strong>👷 ${escapeHTML(p.full_name)}</strong><div class="muted">${escapeHTML(p.role||'')}</div></div>`).join('')||'<div class="muted">Sin personal activo.</div>';
+  const {data:wd,error:we}=await supabase.from('workdays').select('id,operator_id,status,created_at,closed_at,profiles(full_name)').eq('work_date',new Date().toISOString().slice(0,10)).order('created_at');if(we){today.innerHTML=escapeHTML(we.message);return;}
+  today.innerHTML=(wd||[]).map(w=>`<div class="result"><div class="row"><strong>${escapeHTML(w.profiles?.full_name||'Personal')}</strong><span class="badge ${w.status==='closed'?'ok':'warn'}">${escapeHTML(w.status)}</span></div><div class="muted">Inicio: ${new Date(w.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}${w.closed_at?' · Salida: '+new Date(w.closed_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):''}</div></div>`).join('')||'<div class="muted">Nadie ha marcado hoy.</div>';
+}
+
+function more(){setHTML(`<div class="title">Más</div><div class="card"><button onclick="go('dashboard')">🏠 Inicio</button><button onclick="go('attendance')">👷 Personal / Asistencia</button><button onclick="go('cash')">💰 Caja</button><button onclick="logoutHAL()">🚪 Cerrar sesión</button></div>`)}
 
 /* =====================================================
    SEGURIDAD
@@ -791,27 +1009,10 @@ async function iniciarHAL() {
   }
 }
 
-supabase.auth.onAuthStateChange(
-  async (event, session) => {
-
-    if (
-      event === 'SIGNED_IN' &&
-      session?.user
-    ) {
-
-      await loadUser(session.user);
-
-    }
-
-    if (event === 'SIGNED_OUT') {
-
-      HAL_USER = null;
-      showLogin();
-
-    }
-
-  }
-);
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session?.user && !HAL_USER) await loadUser(session.user);
+  if (event === 'SIGNED_OUT') { HAL_USER = null; showLogin(); }
+});
 
 iniciarHAL();
 </script>
