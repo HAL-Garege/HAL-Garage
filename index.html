@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V2</title>
+<title>HAL Garage V3</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -50,6 +50,19 @@ input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;col
 
 let HAL_USER = null;
 let selectedClient = null;
+
+function requireUser() {
+  if (HAL_USER && HAL_USER.id) return true;
+  showLogin();
+  return false;
+}
+
+function withTimeout(promise, ms=12000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión a Internet y la configuración de Supabase.')), ms))
+  ]);
+}
 
 /* =====================================================
    UTILIDADES
