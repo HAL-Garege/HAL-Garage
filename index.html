@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V5 - Estable</title>
+<title>HAL Garage V6 - Acceso fijo</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
@@ -14,8 +14,6 @@
 const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
 
-// Un solo cliente Supabase. Evitamos Proxy/interceptores porque pueden ocultar
-// errores de inicialización y producir mensajes como "auth is undefined".
 let supabase = null;
 let SUPABASE_READY = false;
 
@@ -23,19 +21,21 @@ try {
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     throw new Error('No se cargó la librería de Supabase. Revisa Internet y actualiza la página.');
   }
+
+  // Supabase se usa para los datos del negocio.
+  // El acceso de HAL Garage es fijo y no depende de Supabase Auth.
   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
     }
   });
-  SUPABASE_READY = !!supabase?.auth?.signInWithPassword;
-  if (!SUPABASE_READY) throw new Error('El módulo de autenticación de Supabase no está disponible.');
+
+  SUPABASE_READY = !!supabase;
 } catch (e) {
   console.error('HAL Garage / Supabase:', e);
 }
-
 </script>
 <script>
 // HAL Garage V5: evita que una versión antigua del Service Worker deje cargado
@@ -127,261 +127,184 @@ function setHTML(html) {
    ===================================================== */
 
 function showLogin() {
-
   const old = document.getElementById('halLogin');
   if (old) old.remove();
 
   document.body.insertAdjacentHTML('afterbegin', `
     <div id="halLogin"
-      style="
-      position:fixed;
-      inset:0;
-      z-index:99999;
-      background:#07111b;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      box-sizing:border-box">
+      style="position:fixed;inset:0;z-index:99999;background:#07111b;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
 
-      <div style="
-        width:100%;
-        max-width:390px;
-        background:#0e1d2a;
-        border:1px solid #263b4d;
-        border-radius:22px;
-        padding:28px;
-        box-sizing:border-box">
+      <div style="width:100%;max-width:390px;background:#0e1d2a;border:1px solid #263b4d;border-radius:22px;padding:28px;box-sizing:border-box">
 
-        <div style="
-          text-align:center;
-          font-size:30px;
-          font-weight:800;
-          margin-bottom:8px">
-
+        <div style="text-align:center;font-size:30px;font-weight:800;margin-bottom:8px">
           <span style="color:white">HAL</span>
           <span style="color:#4d8dff"> GARAGE</span>
-
         </div>
 
-        <div style="
-          text-align:center;
-          color:#8da2b5;
-          margin-bottom:25px">
-
+        <div style="text-align:center;color:#8da2b5;margin-bottom:22px">
           Sistema de gestión
-
         </div>
 
-        <input id="halEmail"
-          type="email"
-          placeholder="Correo electrónico"
-          style="
-          width:100%;
-          box-sizing:border-box;
-          padding:14px;
-          margin-bottom:12px;
-          border-radius:12px;
-          border:1px solid #31495c;
-          background:#07111b;
-          color:white">
+        <div style="color:#91a4b7;font-size:12px;margin-bottom:7px">SELECCIONA TU PERFIL</div>
+
+        <div style="display:grid;gap:9px">
+          <button type="button" class="btn" id="profile_admin" onclick="selectFixedProfile('admin')" style="margin-top:0">👑 Administrador<br><small>Eduardo Lazo</small></button>
+          <button type="button" class="btn alt" id="profile_supervisor" onclick="selectFixedProfile('supervisor')" style="margin-top:0">🛠️ Supervisor<br><small>Hal Garage</small></button>
+          <button type="button" class="btn alt" id="profile_operario" onclick="selectFixedProfile('operario')" style="margin-top:0">🚗 Operario<br><small>hal garage</small></button>
+        </div>
 
         <input id="halPassword"
           type="password"
           placeholder="Contraseña"
-          style="
-          width:100%;
-          box-sizing:border-box;
-          padding:14px;
-          margin-bottom:15px;
-          border-radius:12px;
-          border:1px solid #31495c;
-          background:#07111b;
-          color:white">
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') loginHAL()"
+          style="width:100%;box-sizing:border-box;padding:14px;margin:15px 0 10px;border-radius:12px;border:1px solid #31495c;background:#07111b;color:white">
 
-        <button onclick="loginHAL()"
-          style="
-          width:100%;
-          padding:14px;
-          border:0;
-          border-radius:12px;
-          background:#2675ff;
-          color:white;
-          font-size:16px;
-          font-weight:700">
-
+        <button type="button" onclick="loginHAL()"
+          style="width:100%;padding:14px;border:0;border-radius:12px;background:#2675ff;color:white;font-size:16px;font-weight:700">
           INGRESAR
-
-        </button>
-
-        <button onclick="forgotPasswordHAL()" style="width:100%;padding:11px;border:0;background:transparent;color:#7eb7ff;font-size:13px;margin-top:6px">
-          ¿Olvidaste tu contraseña?
         </button>
 
         <div id="halLoginMsg"
-          style="
-          min-height:24px;
-          margin-top:15px;
-          text-align:center;
-          color:#ff7777">
-
-        </div>
+          style="min-height:24px;margin-top:15px;text-align:center;color:#ff7777"></div>
 
       </div>
     </div>
   `);
+
+  selectFixedProfile('admin');
 }
 
-async function forgotPasswordHAL() {
-  const email = (document.getElementById('halEmail')?.value || '').trim();
+const FIXED_USERS = Object.freeze({
+  admin: {
+    role: 'administrador',
+    name: 'HAL GARAGE',
+    password: 'hal-garage-2020'
+  },
+  supervisor: {
+    role: 'supervisor',
+    name: 'Hal Garage',
+    password: 'halgarage2020'
+  },
+  operario: {
+    role: 'operario',
+    name: 'hal garage',
+    password: 'Hal2020'
+  }
+});
+
+let selectedFixedProfile = 'admin';
+
+function selectFixedProfile(profileKey) {
+  if (!FIXED_USERS[profileKey]) return;
+  selectedFixedProfile = profileKey;
+
+  document.querySelectorAll('#halLogin [id^="profile_"]').forEach(btn => {
+    btn.style.background = '#152b3d';
+    btn.style.border = '1px solid #294157';
+  });
+
+  const active = document.getElementById('profile_' + profileKey);
+  if (active) {
+    active.style.background = '#117ff0';
+    active.style.border = '1px solid #42aaff';
+  }
+
+  const pass = document.getElementById('halPassword');
+  if (pass) {
+    pass.value = '';
+    pass.focus();
+  }
+
   const msg = document.getElementById('halLoginMsg');
-  if (!email) {
-    if (msg) msg.textContent = 'Escribe primero tu correo electrónico.';
-    return;
+  if (msg) {
+    msg.textContent = '';
+    msg.style.color = '#ff7777';
   }
+}
+
+async function resolveFixedProfileId(user) {
   try {
-    const redirectTo = window.location.href.split('#')[0];
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) throw error;
-    if (msg) { msg.style.color='#74e77b'; msg.textContent='Te enviamos un enlace para restablecer la contraseña. Revisa tu correo.'; }
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id,full_name,role,active')
+      .eq('full_name', user.name)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('No se pudo resolver el perfil de Supabase:', error.message);
+      return null;
+    }
+
+    if (data && data.active === false) return null;
+    return data?.id || null;
   } catch (e) {
-    console.error(e);
-    if (msg) { msg.style.color='#ff7777'; msg.textContent=e.message || 'No se pudo enviar el correo de recuperación.'; }
+    console.warn('No se pudo resolver el ID del perfil:', e);
+    return null;
   }
 }
 
-function showRecovery() {
-  const old = document.getElementById('halRecovery');
-  if (old) old.remove();
-  document.body.insertAdjacentHTML('afterbegin', `
-    <div id="halRecovery" style="position:fixed;inset:0;z-index:100000;background:#07111b;display:flex;align-items:center;justify-content:center;padding:20px">
-      <div style="width:100%;max-width:390px;background:#0e1d2a;border:1px solid #263b4d;border-radius:22px;padding:28px">
-        <div style="text-align:center;font-size:26px;font-weight:800;margin-bottom:8px"><span style="color:white">HAL</span><span style="color:#4d8dff"> GARAGE</span></div>
-        <div style="text-align:center;color:#8da2b5;margin-bottom:20px">Crear nueva contraseña</div>
-        <input id="newPassword1" type="password" placeholder="Nueva contraseña" style="width:100%;box-sizing:border-box;padding:14px;margin-bottom:10px;border-radius:12px;border:1px solid #31495c;background:#07111b;color:white">
-        <input id="newPassword2" type="password" placeholder="Repite la contraseña" style="width:100%;box-sizing:border-box;padding:14px;margin-bottom:15px;border-radius:12px;border:1px solid #31495c;background:#07111b;color:white">
-        <button onclick="saveNewPasswordHAL()" style="width:100%;padding:14px;border:0;border-radius:12px;background:#2675ff;color:white;font-size:16px;font-weight:700">GUARDAR CONTRASEÑA</button>
-        <div id="halRecoveryMsg" style="min-height:24px;margin-top:15px;text-align:center;color:#ff7777"></div>
-      </div>
-    </div>`);
-}
-
-async function saveNewPasswordHAL() {
-  const p1=document.getElementById('newPassword1')?.value || '';
-  const p2=document.getElementById('newPassword2')?.value || '';
-  const msg=document.getElementById('halRecoveryMsg');
-  if (p1.length < 6) { msg.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
-  if (p1 !== p2) { msg.textContent='Las contraseñas no coinciden.'; return; }
-  try {
-    const { error } = await supabase.auth.updateUser({ password:p1 });
-    if (error) throw error;
-    msg.style.color='#74e77b'; msg.textContent='Contraseña actualizada. Entrando al sistema...';
-    setTimeout(()=>{ const el=document.getElementById('halRecovery'); if(el)el.remove(); },900);
-  } catch(e) { console.error(e); msg.textContent=e.message || 'No se pudo actualizar la contraseña.'; }
+function createdByPayload() {
+  return HAL_USER?.id ? { created_by: HAL_USER.id } : {};
 }
 
 async function loginHAL() {
+  const password = document.getElementById('halPassword')?.value || '';
+  const msg = document.getElementById('halLoginMsg');
+  const selected = FIXED_USERS[selectedFixedProfile];
 
-  const email =
-    document.getElementById('halEmail').value.trim();
-
-  const password =
-    document.getElementById('halPassword').value;
-
-  const msg =
-    document.getElementById('halLoginMsg');
-
-  if (!email || !password) {
-    msg.textContent = 'Completa correo y contraseña.';
+  if (!selected) {
+    if (msg) msg.textContent = 'Selecciona un perfil.';
     return;
   }
 
-  msg.textContent = 'Ingresando...';
-  const btn=document.querySelector('#halLogin button');
-  if(btn) { btn.disabled=true; btn.textContent='CONECTANDO...'; }
-
-  let result;
-  try {
-    const sb = supabase;
-    result = await withTimeout(sb.auth.signInWithPassword({email,password}),12000);
-  } catch (e) {
-    console.error(e);
-    msg.textContent = e.message || 'No se pudo conectar con el servidor.';
-    if(btn){btn.disabled=false;btn.textContent='INGRESAR';}
-    return;
-  }
-  const { data, error } = result;
-
-  if (error) {
-    console.error(error);
-    msg.textContent = error.message || 'Correo o contraseña incorrectos.';
-    if(btn){btn.disabled=false;btn.textContent='INGRESAR';}
+  if (!password) {
+    if (msg) msg.textContent = 'Escribe la contraseña.';
     return;
   }
 
-  await loadUser(data.user);
-}
-
-async function loadUser(user) {
-
-  let result;
-  try {
-    result = await withTimeout(supabase.from('profiles').select('id,full_name,role,active').eq('id', user.id).maybeSingle(),10000);
-  } catch(e) {
-    console.error(e); toast('No se pudo cargar tu perfil: '+e.message,'error'); return;
-  }
-  const { data, error } = result;
-
-  if (error) {
-    console.error(error);
-    toast('Error cargando usuario', 'error');
+  // La comparación es intencionalmente sensible a mayúsculas/minúsculas.
+  if (password !== selected.password) {
+    if (msg) msg.textContent = 'Contraseña incorrecta.';
     return;
   }
 
-  if (!data) {
-    const login = document.getElementById('halLogin');
-    if (login) {
-      const msg = document.getElementById('halLoginMsg');
-      if (msg) { msg.style.color='#ff7777'; msg.textContent='El correo y contraseña son correctos, pero este usuario no tiene perfil en HAL Garage.'; }
-    }
-    await supabase.auth.signOut();
-    return;
+  if (msg) {
+    msg.style.color = '#74e77b';
+    msg.textContent = 'Ingresando...';
   }
 
-  if (!data.active) {
-    toast('Usuario desactivado', 'error');
-    await supabase.auth.signOut();
-    return;
-  }
+  const id = await resolveFixedProfileId(selected);
 
   HAL_USER = {
-    id: user.id,
-    email: user.email,
-    name: data.full_name,
-    role: data.role
+    id,
+    email: null,
+    name: selected.name,
+    role: selected.role
   };
+
+  sessionStorage.setItem('HAL_FIXED_USER', selectedFixedProfile);
 
   const login = document.getElementById('halLogin');
   if (login) login.remove();
 
   updateUserLabel();
-
   go('dashboard');
 }
 
 function updateUserLabel() {
-
   const el = document.getElementById('userLabel');
 
   if (el && HAL_USER) {
-    el.textContent =
-      HAL_USER.name + ' · ' + HAL_USER.role;
+    el.textContent = HAL_USER.name + ' · ' + HAL_USER.role;
   }
 }
 
-async function logoutHAL() {
-  try { await supabase.auth.signOut(); } catch (e) { console.error(e); }
+function logoutHAL() {
   HAL_USER = null;
+  sessionStorage.removeItem('HAL_FIXED_USER');
   showLogin();
 }
 
@@ -658,7 +581,7 @@ async function newClient() {
         full_name:name.trim(),
         phone:phone,
         active:true,
-        created_by:HAL_USER.id
+        ...createdByPayload()
       });
 
   if (error) {
@@ -981,7 +904,7 @@ async function finishSale() {
       vehicle_id:s.vehicle.id,
       total,
       status:'confirmed',
-      created_by:HAL_USER.id
+      ...createdByPayload()
     }).select('id,sale_number').single();
     if (saleError) throw saleError;
 
@@ -1000,7 +923,7 @@ async function finishSale() {
       sale_id:sale.id,
       method:s.payment,
       amount:total,
-      created_by:HAL_USER.id
+      ...createdByPayload()
     });
     if (paymentError) throw paymentError;
 
@@ -1009,7 +932,7 @@ async function finishSale() {
       payment_method:s.payment,
       amount:total,
       sale_id:sale.id,
-      created_by:HAL_USER.id
+      ...createdByPayload()
     });
     if (cashError) throw cashError;
 
@@ -1041,16 +964,16 @@ async function loadCash(){
 }
 function newExpense(){const concept=prompt('Concepto del egreso:');if(!concept)return;const amount=Number(prompt('Monto en soles:'));if(!amount||amount<=0){toast('Monto inválido','error');return;}const method=(prompt('Forma de pago: cash / yape / plin / transfer','cash')||'cash').trim().toLowerCase();saveExpense(concept.trim(),amount,method)}
 async function saveExpense(concept,amount,method){
-  const {data,error}=await supabase.from('expenses').insert({concept,category:'General',amount,payment_method:method,created_by:HAL_USER.id}).select('id').single();
+  const {data,error}=await supabase.from('expenses').insert({concept,category:'General',amount,payment_method:method,...createdByPayload()}).select('id').single();
   if(error){toast('No se pudo registrar el egreso: '+error.message,'error');return;}
-  const {error:ce}=await supabase.from('cash_movements').insert({movement_type:'expense',payment_method:method,amount,expense_id:data.id,created_by:HAL_USER.id});
+  const {error:ce}=await supabase.from('cash_movements').insert({movement_type:'expense',payment_method:method,amount,expense_id:data.id,...createdByPayload()});
   if(ce){toast('Egreso guardado, pero caja devolvió error: '+ce.message,'error');return;}toast('Egreso registrado');await loadCash();
 }
 
 /* =====================================================
    PERSONAL / ASISTENCIA
    ===================================================== */
-function isAdmin(){return ['admin','administrator','administrador','manager','gerente'].includes(String(HAL_USER?.role||'').toLowerCase())}
+function isAdmin(){return String(HAL_USER?.role||'').toLowerCase()==='administrador'}
 async function attendance(){
   if (!requireUser()) return;
   setHTML(`<div class="title">Personal</div><div class="date">Asistencia con foto y hora automática</div>
@@ -1073,7 +996,7 @@ async function markAttendance(type){
   if(!requireUser())return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
   if(type==='open'&&!wd){const {data,error}=await supabase.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
   if(!wd){toast('No existe jornada para esta marcación','error');return;}
-  const {error}=await supabase.from('workday_events').insert({workday_id:wd.id,event_type:type,occurred_at:new Date().toISOString(),photo_path:photo,created_by:HAL_USER.id});
+  const {error}=await supabase.from('workday_events').insert({workday_id:wd.id,event_type:type,occurred_at:new Date().toISOString(),photo_path:photo,...createdByPayload()});
   if(error){toast('No se pudo guardar: '+error.message,'error');return;}if(type==='close')await supabase.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',wd.id);
   toast(type==='open'?'Entrada registrada':type==='close'?'Salida registrada':'Marcación registrada');await renderMyAttendance();
 }
@@ -1105,35 +1028,31 @@ function escapeHTML(value) {
    INICIO
    ===================================================== */
 
-async function iniciarHAL() {
+function iniciarHAL() {
+  const saved = sessionStorage.getItem('HAL_FIXED_USER');
 
-  try {
-    const {
-      data: { session }
-    } = await supabase.auth.getSession();
+  if (saved && FIXED_USERS[saved]) {
+    const user = FIXED_USERS[saved];
 
-    if (session?.user) {
-      await loadUser(session.user);
-    } else {
-      showLogin();
-    }
-  } catch (e) {
-    console.error(e);
+    HAL_USER = {
+      id: null,
+      email: null,
+      name: user.name,
+      role: user.role
+    };
+
+    // Recuperamos el UUID del perfil si existe en la tabla profiles.
+    resolveFixedProfileId(user).then(id => {
+      if (HAL_USER && HAL_USER.role === user.role) {
+        HAL_USER.id = id;
+      }
+    });
+
+    updateUserLabel();
+    go('dashboard');
+  } else {
     showLogin();
-    const msg = document.getElementById('halLoginMsg');
-    if (msg) msg.textContent = e.message || 'No se pudo iniciar la conexión.';
   }
-}
-
-if (SUPABASE_READY) {
-  supabase.auth.onAuthStateChange((event, session) => {
-    // No hacemos consultas async directamente dentro del callback de Supabase.
-    setTimeout(() => {
-      if (event === 'SIGNED_IN' && session?.user && !HAL_USER) loadUser(session.user);
-      if (event === 'PASSWORD_RECOVERY') showRecovery();
-      if (event === 'SIGNED_OUT') { HAL_USER = null; showLogin(); }
-    }, 0);
-  });
 }
 
 iniciarHAL();
