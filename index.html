@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V9 - Sistema operativo</title>
+<title>HAL Garage V10 - Clientes, Ventas y Personal</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@halDb/halDb-js@2/dist/umd/halDb.min.js"></script>
 
 <script>
-const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
+const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.halDb.co';
 const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
 
 let halDb = null;
@@ -38,7 +38,7 @@ try {
 }
 </script>
 <script>
-// HAL Garage V5: evita que una versión antigua del Service Worker deje cargado
+// HAL Garage V10: evita que una versión antigua del Service Worker deje cargado
 // un JavaScript anterior en GitHub Pages. No borra datos de Supabase.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
@@ -185,7 +185,7 @@ function showLogin() {
 
 const FIXED_USERS = Object.freeze({
   admin: {
-    role: 'administrador',
+    role: 'admin',
     name: 'HAL GARAGE',
     password: 'hal.garage.2020'
   },
@@ -195,7 +195,7 @@ const FIXED_USERS = Object.freeze({
     password: 'Halgarage2020'
   },
   operario: {
-    role: 'operario',
+    role: 'operator',
     name: 'hal garage',
     password: 'hal2020'
   }
@@ -234,19 +234,36 @@ function selectFixedProfile(profileKey) {
 async function resolveFixedProfileId(user) {
   try {
     if (!dbReady()) return null;
+
     const { data, error } = await halDb
       .from('profiles')
       .select('id,full_name,role,active')
-      .eq('role', user.role)
       .eq('active', true)
-      .limit(20);
+      .limit(100);
+
     if (error) {
       console.warn('No se pudo resolver el perfil de Supabase:', error.message);
       return null;
     }
+
+    const normalize = v => String(v || '').trim().toLowerCase();
+    const roleKey = role => {
+      const r = normalize(role);
+      if (['admin','administrador','administrator'].includes(r)) return 'admin';
+      if (['operator','operador','operario'].includes(r)) return 'operator';
+      if (['supervisor'].includes(r)) return 'supervisor';
+      return r;
+    };
+
     const rows = data || [];
-    const exact = rows.find(p => String(p.full_name || '').trim().toLowerCase() === String(user.name || '').trim().toLowerCase());
-    return exact?.id || rows[0]?.id || null;
+    const wantedName = normalize(user.name);
+    const wantedRole = roleKey(user.role);
+
+    // Primero nombre exacto; luego rol equivalente.
+    const exact = rows.find(p => normalize(p.full_name) === wantedName);
+    const byRole = rows.find(p => roleKey(p.role) === wantedRole);
+
+    return exact?.id || byRole?.id || null;
   } catch (e) {
     console.warn('No se pudo resolver el ID del perfil:', e);
     return null;
@@ -396,7 +413,7 @@ async function dashboard() {
 
 async function loadDashboardData() {
   if(!dbReady()) return;
-  if(!supabase) throw new Error('Supabase no está disponible.');
+  if(!halDb) throw new Error('Supabase no está disponible.');
 
   const today =
     new Date().toISOString().slice(0,10);
@@ -405,21 +422,21 @@ async function loadDashboardData() {
   const end = today + 'T23:59:59';
 
   const { data: sales } =
-    await supabase
+    await halDb
       .from('sales')
       .select('total')
       .gte('created_at', start)
       .lte('created_at', end);
 
   const { data: expenses } =
-    await supabase
+    await halDb
       .from('expenses')
       .select('amount')
       .gte('created_at', start)
       .lte('created_at', end);
 
   const { count: vehicles } =
-    await supabase
+    await halDb
       .from('vehicles')
       .select('*', {
         count:'exact',
@@ -540,7 +557,7 @@ async function saveClientForm() {
 
 async function loadClients() {
   if(!dbReady()) return;
-  const { data, error } = await supabase
+  const { data, error } = await halDb
     .from('clients').select('*').eq('active', true).order('full_name');
 
   if (error) {
@@ -793,7 +810,7 @@ async function sale() {
 
 async function loadSaleClients() {
   if(!dbReady()) return;
-  const { data, error } = await supabase
+  const { data, error } = await halDb
     .from('clients')
     .select('id,full_name,phone')
     .eq('active', true)
@@ -842,7 +859,7 @@ function clearSaleClient() {
 async function loadSaleVehicles(clientId) {
   if(!dbReady()) return;
   const box = document.getElementById('saleVehicleList');
-  const { data, error } = await supabase
+  const { data, error } = await halDb
     .from('vehicles')
     .select('id,plate,brand,model,vehicle_type_id,vehicle_types(name)')
     .eq('client_id', clientId)
@@ -876,7 +893,7 @@ async function chooseSaleVehicle(id) {
 async function loadSaleServices(vehicleTypeId) {
   if(!dbReady()) return;
   const box = document.getElementById('saleServiceList');
-  const { data, error } = await supabase
+  const { data, error } = await halDb
     .from('service_prices')
     .select('id,service_id,vehicle_type_id,price,services(id,name,description)')
     .eq('vehicle_type_id', vehicleTypeId)
@@ -1001,8 +1018,16 @@ async function saveExpense(concept,amount,method){
 /* =====================================================
    PERSONAL / ASISTENCIA
    ===================================================== */
-function isAdmin(){return String(HAL_USER?.role||'').toLowerCase()==='administrador'}
-function isSupervisor(){return String(HAL_USER?.role||'').toLowerCase()==='supervisor'}
+function roleKey(role){
+  const r=String(role||'').trim().toLowerCase();
+  if(['admin','administrador','administrator'].includes(r)) return 'admin';
+  if(['operator','operador','operario'].includes(r)) return 'operator';
+  if(r==='supervisor') return 'supervisor';
+  return r;
+}
+function isAdmin(){return roleKey(HAL_USER?.role)==='admin'}
+function isSupervisor(){return roleKey(HAL_USER?.role)==='supervisor'}
+function isOperator(){return roleKey(HAL_USER?.role)==='operator'}
 function canManage(){return isAdmin()||isSupervisor()}
 function canUseCash(){return isAdmin()||isSupervisor()}
 function canSell(){return true}
@@ -1021,7 +1046,7 @@ function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.inclu
 async function renderMyAttendance(){
   if(!dbReady()) return;
   const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;if(!HAL_USER.id){
-    box.innerHTML='<div class="errorbox">Este perfil fijo todavía no está vinculado a un registro en <b>profiles</b>. La asistencia necesita ese vínculo.</div>';
+    box.innerHTML='<div class="errorbox">No se encontró el perfil del trabajador en Supabase. Cierra sesión y vuelve a ingresar; si continúa, revisa el registro de profiles.</div>';
     actions.innerHTML='';
     return;
   }
@@ -1100,8 +1125,9 @@ function iniciarHAL() {
     resolveFixedProfileId(user).then(id => {
       if (HAL_USER && HAL_USER.role === user.role) {
         HAL_USER.id = id;
+        if (!id) console.warn('HAL Garage: no se encontró perfil para', user);
       }
-    });
+    }).catch(e => console.warn('HAL Garage: error resolviendo perfil', e));
 
     updateUserLabel();
     go('dashboard');
