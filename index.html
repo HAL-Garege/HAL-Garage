@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V4 - Estable</title>
+<title>HAL Garage V5 - Estable</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
@@ -36,11 +36,12 @@ try {
   console.error('HAL Garage / Supabase:', e);
 }
 
-function getSB() {
-  if (!SUPABASE_READY || !supabase?.auth) {
-    throw new Error('No se pudo inicializar Supabase. Revisa Internet y vuelve a actualizar la página.');
-  }
-  return supabase;
+</script>
+<script>
+// HAL Garage V5: evita que una versión antigua del Service Worker deje cargado
+// un JavaScript anterior en GitHub Pages. No borra datos de Supabase.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
 }
 </script>
 <style>
@@ -240,7 +241,7 @@ async function forgotPasswordHAL() {
   }
   try {
     const redirectTo = window.location.href.split('#')[0];
-    const { error } = await getSB().auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
     if (msg) { msg.style.color='#74e77b'; msg.textContent='Te enviamos un enlace para restablecer la contraseña. Revisa tu correo.'; }
   } catch (e) {
@@ -272,7 +273,7 @@ async function saveNewPasswordHAL() {
   if (p1.length < 6) { msg.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
   if (p1 !== p2) { msg.textContent='Las contraseñas no coinciden.'; return; }
   try {
-    const { error } = await getSB().auth.updateUser({ password:p1 });
+    const { error } = await supabase.auth.updateUser({ password:p1 });
     if (error) throw error;
     msg.style.color='#74e77b'; msg.textContent='Contraseña actualizada. Entrando al sistema...';
     setTimeout(()=>{ const el=document.getElementById('halRecovery'); if(el)el.remove(); },900);
@@ -301,7 +302,7 @@ async function loginHAL() {
 
   let result;
   try {
-    const sb = getSB();
+    const sb = supabase;
     result = await withTimeout(sb.auth.signInWithPassword({email,password}),12000);
   } catch (e) {
     console.error(e);
@@ -1109,7 +1110,7 @@ async function iniciarHAL() {
   try {
     const {
       data: { session }
-    } = await getSB().auth.getSession();
+    } = await supabase.auth.getSession();
 
     if (session?.user) {
       await loadUser(session.user);
