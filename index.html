@@ -6,25 +6,25 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V8 - Sistema operativo estable</title>
+<title>HAL Garage V9 - Sistema operativo</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/halDb.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
-const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.halDb.co';
+const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
 
 let halDb = null;
 let SUPABASE_READY = false;
 
 try {
-  if (!window.supabase || typeof window.halDb.createClient !== 'function') {
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     throw new Error('No se cargó la librería de Supabase. Revisa Internet y actualiza la página.');
   }
 
   // Supabase se usa para los datos del negocio.
   // El acceso de HAL Garage es fijo y no depende de Supabase Auth.
-  halDb = window.halDb.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  halDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -75,6 +75,14 @@ input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;col
 let HAL_USER = null;
 let selectedClient = null;
 
+function dbReady() {
+  if (!halDb || typeof halDb.from !== 'function') {
+    toast('No se pudo inicializar la conexión con Supabase. Recarga la aplicación.', 'error');
+    return false;
+  }
+  return true;
+}
+
 function requireUser() {
   if (HAL_USER) return true;
   showLogin();
@@ -86,15 +94,6 @@ function withTimeout(promise, ms=12000) {
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión a Internet y la configuración de Supabase.')), ms))
   ]);
-}
-
-
-function dbReady() {
-  if (!halDb || typeof halDb.from !== 'function') {
-    toast('No se pudo inicializar la conexión con Supabase. Recarga la aplicación.', 'error');
-    return false;
-  }
-  return true;
 }
 
 /* =====================================================
@@ -235,26 +234,19 @@ function selectFixedProfile(profileKey) {
 async function resolveFixedProfileId(user) {
   try {
     if (!dbReady()) return null;
-
-    // Prefer role because the fixed login is role-based. If several records
-    // exist, the exact fixed display name is used as a second filter.
-    let { data, error } = await halDb
+    const { data, error } = await halDb
       .from('profiles')
       .select('id,full_name,role,active')
       .eq('role', user.role)
       .eq('active', true)
       .limit(20);
-
     if (error) {
-      console.warn('No se pudo consultar profiles:', error.message);
+      console.warn('No se pudo resolver el perfil de Supabase:', error.message);
       return null;
     }
-
-    const exact = (data || []).find(p =>
-      String(p.full_name || '').trim().toLowerCase() === String(user.name || '').trim().toLowerCase()
-    );
-
-    return exact?.id || data?.[0]?.id || null;
+    const rows = data || [];
+    const exact = rows.find(p => String(p.full_name || '').trim().toLowerCase() === String(user.name || '').trim().toLowerCase());
+    return exact?.id || rows[0]?.id || null;
   } catch (e) {
     console.warn('No se pudo resolver el ID del perfil:', e);
     return null;
@@ -1027,6 +1019,7 @@ async function getWorkdayEvents(id){
   if(!dbReady()) return;const {data,error}=await halDb.from('workday_events').select('*').eq('workday_id',id).order('occurred_at');if(error)console.error(error);return data||[]}
 function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.includes('open'))return'open';if(!t.includes('lunch'))return'lunch';if(!t.includes('return'))return'return';if(!t.includes('close'))return'close';return null}
 async function renderMyAttendance(){
+  if(!dbReady()) return;
   const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;if(!HAL_USER.id){
     box.innerHTML='<div class="errorbox">Este perfil fijo todavía no está vinculado a un registro en <b>profiles</b>. La asistencia necesita ese vínculo.</div>';
     actions.innerHTML='';
@@ -1040,6 +1033,7 @@ async function renderMyAttendance(){
 }
 async function takeAttendancePhoto(){return new Promise(resolve=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='user';input.onchange=()=>{const file=input.files?.[0];if(!file){resolve(null);return;}const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=720,scale=Math.min(1,max/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',.72))};img.src=url};input.click()})}
 async function markAttendance(type){
+  if(!dbReady()) return;
   if(!requireUser())return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
   if(type==='open'&&!wd){const {data,error}=await halDb.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
   if(!wd){toast('No existe jornada para esta marcación','error');return;}
