@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage</title>
+<title>HAL Garage V2</title>
+<style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
@@ -207,16 +208,24 @@ async function loginHAL() {
   }
 
   msg.textContent = 'Ingresando...';
+  const btn=document.querySelector('#halLogin button');
+  if(btn) { btn.disabled=true; btn.textContent='CONECTANDO...'; }
 
-  const { data, error } =
-    await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+  let result;
+  try {
+    result = await withTimeout(supabase.auth.signInWithPassword({email,password}),12000);
+  } catch (e) {
+    console.error(e);
+    msg.textContent = e.message || 'No se pudo conectar con el servidor.';
+    if(btn){btn.disabled=false;btn.textContent='INGRESAR';}
+    return;
+  }
+  const { data, error } = result;
 
   if (error) {
     console.error(error);
-    msg.textContent = 'Correo o contraseña incorrectos.';
+    msg.textContent = error.message || 'Correo o contraseña incorrectos.';
+    if(btn){btn.disabled=false;btn.textContent='INGRESAR';}
     return;
   }
 
@@ -225,12 +234,13 @@ async function loginHAL() {
 
 async function loadUser(user) {
 
-  const { data, error } =
-    await supabase
-      .from('profiles')
-      .select('id,full_name,role,active')
-      .eq('id', user.id)
-      .maybeSingle();
+  let result;
+  try {
+    result = await withTimeout(supabase.from('profiles').select('id,full_name,role,active').eq('id', user.id).maybeSingle(),10000);
+  } catch(e) {
+    console.error(e); toast('No se pudo cargar tu perfil: '+e.message,'error'); return;
+  }
+  const { data, error } = result;
 
   if (error) {
     console.error(error);
@@ -286,6 +296,7 @@ async function logoutHAL() {
    ===================================================== */
 
 async function dashboard() {
+  if (!requireUser()) return;
 
   setHTML(`
     <div class="title">
@@ -414,6 +425,7 @@ async function loadDashboardData() {
    ===================================================== */
 
 async function clients() {
+  if (!requireUser()) return;
 
   setHTML(`
     <div class="title">
@@ -455,7 +467,9 @@ async function loadClients() {
 
   if (error) {
     console.error(error);
-    toast('Error cargando clientes', 'error');
+    const box=document.getElementById('clientList');
+    if(box) box.innerHTML='<div class="errorbox"><b>No se pudieron cargar los clientes.</b><br>'+escapeHTML(error.message)+'</div>';
+    toast('Error cargando clientes: '+error.message, 'error');
     return;
   }
 
@@ -532,6 +546,7 @@ function filterClients() {
 }
 
 async function newClient() {
+  if (!requireUser()) return;
 
   const name =
     prompt('Nombre completo del cliente:');
@@ -696,6 +711,7 @@ function go(page) {
    ===================================================== */
 
 async function sale() {
+  if (!requireUser()) return;
 
   setHTML(`
     <div class="title">Nueva atención</div>
@@ -912,6 +928,7 @@ async function finishSale() {
 }
 
 async function cash() {
+  if (!requireUser()) return;
   setHTML(`<div class="title">Caja</div><div class="date">Ingresos, egresos y saldo real</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="card"><small>Ingresos</small><h2 id="cashIncome">S/ 0.00</h2></div><div class="card"><small>Egresos</small><h2 id="cashExpense">S/ 0.00</h2></div></div>
   <div class="card"><small>Saldo actual</small><h2 class="green" id="cashBalance">S/ 0.00</h2></div>
@@ -940,6 +957,7 @@ async function saveExpense(concept,amount,method){
    ===================================================== */
 function isAdmin(){return ['admin','administrator','administrador','manager','gerente'].includes(String(HAL_USER?.role||'').toLowerCase())}
 async function attendance(){
+  if (!requireUser()) return;
   setHTML(`<div class="title">Personal</div><div class="date">Asistencia con foto y hora automática</div>
   <div class="card"><h3>Mi jornada de hoy</h3><div id="myAttendance">Cargando...</div><div id="attendanceActions"></div></div>
   ${isAdmin()?'<div class="card"><h3>Personal activo</h3><div id="staffList">Cargando...</div></div><div class="card"><h3>Marcaciones de hoy</h3><div id="staffAttendance">Cargando...</div></div>':''}`);
@@ -947,22 +965,22 @@ async function attendance(){
 }
 async function getTodayWorkday(userId){const {data,error}=await supabase.from('workdays').select('*').eq('operator_id',userId).eq('work_date',new Date().toISOString().slice(0,10)).order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)console.error(error);return data}
 async function getWorkdayEvents(id){const {data,error}=await supabase.from('workday_events').select('*').eq('workday_id',id).order('occurred_at');if(error)console.error(error);return data||[]}
-function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.includes('entry'))return'entry';if(!t.includes('break_start'))return'break_start';if(!t.includes('break_end'))return'break_end';if(!t.includes('exit'))return'exit';return null}
+function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.includes('open'))return'open';if(!t.includes('lunch'))return'lunch';if(!t.includes('return'))return'return';if(!t.includes('close'))return'close';return null}
 async function renderMyAttendance(){
   const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;const wd=await getTodayWorkday(HAL_USER.id);
   if(!wd){box.innerHTML='<span class="badge warn">Sin entrada registrada</span>';actions.innerHTML='<button class="btn green" onclick="markAttendance(\'entry\')">📸 MARCAR ENTRADA</button>';return;}
-  const ev=await getWorkdayEvents(wd.id),labels={entry:'🟢 Entrada',break_start:'🍽️ Inicio refrigerio',break_end:'🔄 Fin refrigerio',exit:'🔴 Salida'};
+  const ev=await getWorkdayEvents(wd.id),labels={open:'🟢 Entrada',lunch:'🍽️ Inicio refrigerio',return:'🔄 Fin refrigerio',close:'🔴 Salida'};
   box.innerHTML=ev.map(e=>`<div class="result"><div class="row"><strong>${labels[e.event_type]||e.event_type}</strong><span>${new Date(e.occurred_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="muted">${e.photo_path?'📷 Foto registrada':'Sin foto'}</div></div>`).join('');
-  const n=nextEvent(ev),lab={break_start:'🍽️ INICIAR REFRIGERIO',break_end:'🔄 TERMINAR REFRIGERIO',exit:'📸 MARCAR SALIDA'};actions.innerHTML=n?`<button class="btn ${n==='exit'?'red':'green'}" onclick="markAttendance('${n}')">${lab[n]}</button>`:'<span class="badge ok">Jornada completa</span>';
+  const n=nextEvent(ev),lab={lunch:'🍽️ INICIAR REFRIGERIO',return:'🔄 TERMINAR REFRIGERIO',close:'📸 MARCAR SALIDA'};actions.innerHTML=n?`<button class="btn ${n==='close'?'red':'green'}" onclick="markAttendance('${n}')">${lab[n]}</button>`:'<span class="badge ok">Jornada completa</span>';
 }
 async function takeAttendancePhoto(){return new Promise(resolve=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='user';input.onchange=()=>{const file=input.files?.[0];if(!file){resolve(null);return;}const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=720,scale=Math.min(1,max/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',.72))};img.src=url};input.click()})}
 async function markAttendance(type){
-  if(!HAL_USER)return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
-  if(type==='entry'&&!wd){const {data,error}=await supabase.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
+  if(!requireUser())return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
+  if(type==='open'&&!wd){const {data,error}=await supabase.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
   if(!wd){toast('No existe jornada para esta marcación','error');return;}
   const {error}=await supabase.from('workday_events').insert({workday_id:wd.id,event_type:type,occurred_at:new Date().toISOString(),photo_path:photo,created_by:HAL_USER.id});
-  if(error){toast('No se pudo guardar: '+error.message,'error');return;}if(type==='exit')await supabase.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',wd.id);
-  toast(type==='entry'?'Entrada registrada':type==='exit'?'Salida registrada':'Marcación registrada');await renderMyAttendance();
+  if(error){toast('No se pudo guardar: '+error.message,'error');return;}if(type==='close')await supabase.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',wd.id);
+  toast(type==='open'?'Entrada registrada':type==='close'?'Salida registrada':'Marcación registrada');await renderMyAttendance();
 }
 async function renderStaffAttendance(){
   const staff=document.getElementById('staffList'),today=document.getElementById('staffAttendance');if(!staff)return;
