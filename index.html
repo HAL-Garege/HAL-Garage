@@ -76,7 +76,7 @@ let HAL_USER = null;
 let selectedClient = null;
 
 function requireUser() {
-  if (HAL_USER && HAL_USER.id) return true;
+  if (HAL_USER) return true;
   showLogin();
   return false;
 }
@@ -148,7 +148,7 @@ function showLogin() {
         <div style="color:#91a4b7;font-size:12px;margin-bottom:7px">SELECCIONA TU PERFIL</div>
 
         <div style="display:grid;gap:9px">
-          <button type="button" class="btn" id="profile_admin" onclick="selectFixedProfile('admin')" style="margin-top:0">👑 Administrador<br><small>Eduardo Lazo</small></button>
+          <button type="button" class="btn" id="profile_admin" onclick="selectFixedProfile('admin')" style="margin-top:0">👑 Administrador<br><small>HAL GARAGE</small></button>
           <button type="button" class="btn alt" id="profile_supervisor" onclick="selectFixedProfile('supervisor')" style="margin-top:0">🛠️ Supervisor<br><small>Hal Garage</small></button>
           <button type="button" class="btn alt" id="profile_operario" onclick="selectFixedProfile('operario')" style="margin-top:0">🚗 Operario<br><small>hal garage</small></button>
         </div>
@@ -179,17 +179,17 @@ const FIXED_USERS = Object.freeze({
   admin: {
     role: 'administrador',
     name: 'HAL GARAGE',
-    password: 'hal-garage-2020'
+    password: 'hal.garage.2020'
   },
   supervisor: {
     role: 'supervisor',
     name: 'Hal Garage',
-    password: 'halgarage2020'
+    password: 'Halgarage2020'
   },
   operario: {
     role: 'operario',
     name: 'hal garage',
-    password: 'Hal2020'
+    password: 'hal2020'
   }
 });
 
@@ -227,10 +227,13 @@ async function resolveFixedProfileId(user) {
   try {
     if (!supabase) return null;
 
+    // Buscamos el perfil por nombre. El acceso fijo NO depende de este paso:
+    // si Supabase no responde o el perfil aún no existe, el usuario igual entra.
     const { data, error } = await supabase
       .from('profiles')
       .select('id,full_name,role,active')
       .eq('full_name', user.name)
+      .limit(1)
       .maybeSingle();
 
     if (error) {
@@ -276,10 +279,10 @@ async function loginHAL() {
     msg.textContent = 'Ingresando...';
   }
 
-  const id = await resolveFixedProfileId(selected);
-
+  // Entramos de inmediato. La consulta a profiles es solo para recuperar
+  // el UUID que algunas operaciones de Supabase usan como created_by.
   HAL_USER = {
-    id,
+    id: null,
     email: null,
     name: selected.name,
     role: selected.role
@@ -292,6 +295,10 @@ async function loginHAL() {
 
   updateUserLabel();
   go('dashboard');
+
+  resolveFixedProfileId(selected).then(id => {
+    if (HAL_USER && HAL_USER.role === selected.role) HAL_USER.id = id;
+  }).catch(() => {});
 }
 
 function updateUserLabel() {
