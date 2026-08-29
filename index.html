@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#07111b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V10 - Clientes, Ventas y Personal</title>
+<title>HAL Garage V11 - Sistema operativo</title>
 <style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
-  <script src="https://cdn.jsdelivr.net/npm/@halDb/halDb-js@2/dist/umd/halDb.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
-const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.halDb.co';
+const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
 
 let halDb = null;
@@ -38,7 +38,7 @@ try {
 }
 </script>
 <script>
-// HAL Garage V10: evita que una versión antigua del Service Worker deje cargado
+// HAL Garage V5: evita que una versión antigua del Service Worker deje cargado
 // un JavaScript anterior en GitHub Pages. No borra datos de Supabase.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
@@ -251,7 +251,7 @@ async function resolveFixedProfileId(user) {
       const r = normalize(role);
       if (['admin','administrador','administrator'].includes(r)) return 'admin';
       if (['operator','operador','operario'].includes(r)) return 'operator';
-      if (['supervisor'].includes(r)) return 'supervisor';
+      if (r === 'supervisor') return 'supervisor';
       return r;
     };
 
@@ -259,7 +259,6 @@ async function resolveFixedProfileId(user) {
     const wantedName = normalize(user.name);
     const wantedRole = roleKey(user.role);
 
-    // Primero nombre exacto; luego rol equivalente.
     const exact = rows.find(p => normalize(p.full_name) === wantedName);
     const byRole = rows.find(p => roleKey(p.role) === wantedRole);
 
@@ -1046,7 +1045,7 @@ function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.inclu
 async function renderMyAttendance(){
   if(!dbReady()) return;
   const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;if(!HAL_USER.id){
-    box.innerHTML='<div class="errorbox">No se encontró el perfil del trabajador en Supabase. Cierra sesión y vuelve a ingresar; si continúa, revisa el registro de profiles.</div>';
+    box.innerHTML='<div class="errorbox">No se encontró el perfil del trabajador en Supabase. Cierra sesión y vuelve a ingresar; si continúa, revisa el registro en profiles.</div>';
     actions.innerHTML='';
     return;
   }
@@ -1125,9 +1124,8 @@ function iniciarHAL() {
     resolveFixedProfileId(user).then(id => {
       if (HAL_USER && HAL_USER.role === user.role) {
         HAL_USER.id = id;
-        if (!id) console.warn('HAL Garage: no se encontró perfil para', user);
       }
-    }).catch(e => console.warn('HAL Garage: error resolviendo perfil', e));
+    });
 
     updateUserLabel();
     go('dashboard');
