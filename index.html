@@ -354,20 +354,24 @@ async function workdayPage(){
   const today=new Date().toISOString().slice(0,10);
   const mine=rows.find(w=>w.operator_id===HAL_USER.id&&w.work_date===today&&w.status==='open');
   const fmtTime=x=>x?new Date(x).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'—';
+  let action='';
+  if(mine){
+   action += `<div class="card"><div class="row"><b>Jornada abierta</b><span class="badge ok">ACTIVA</span></div>
+   <div class="grid" style="margin-top:8px">
+    <div class="result"><div class="muted">Ingreso</div><b>${fmtTime(mine.created_at)}</b></div>
+    <div class="result"><div class="muted">Salida almuerzo</div><b>${fmtTime(mine.lunch_out_at)}</b></div>
+    <div class="result"><div class="muted">Regreso almuerzo</div><b>${fmtTime(mine.lunch_in_at)}</b></div>
+    <div class="result"><div class="muted">Salida jornada</div><b>${fmtTime(mine.closed_at)}</b></div>
+   </div>`;
+   if(!mine.lunch_out_at) action += `<button class="btn orange" onclick="captureWorkdayPhoto('${mine.id}','lunch_out')">📸 SALIR A ALMUERZO</button>`;
+   if(mine.lunch_out_at&&!mine.lunch_in_at) action += `<button class="btn green" onclick="captureWorkdayPhoto('${mine.id}','lunch_in')">📸 REGRESAR DEL ALMUERZO</button>`;
+   if(mine.lunch_in_at) action += `<div class="result success">Almuerzo registrado correctamente.</div>`;
+   action += `<button class="btn red" onclick="captureWorkdayPhoto('${mine.id}','exit')">📸 SALIDA DE JORNADA</button></div>`;
+  }else{
+   action = `<div class="card"><b>Ingreso de hoy</b><div class="muted" style="margin-top:6px">Al iniciar la jornada se abrirá la cámara. La foto quedará guardada como evidencia del ingreso.</div><button class="btn" onclick="captureWorkdayPhoto(null,'entry')">📸 INICIAR JORNADA + FOTO</button></div>`;
+  }
   setHTML(`<div class="title">Jornada</div><div class="date">${fmtDate()} · Registro fotográfico obligatorio</div>
-  ${mine?`<div class="card"><div class="row"><b>Jornada abierta</b><span class="badge ok">ACTIVA</span></div>
-    <div class="grid" style="margin-top:8px">
-      <div class="result"><div class="muted">Ingreso</div><b>${fmtTime(mine.created_at)}</b></div>
-      <div class="result"><div class="muted">Salida almuerzo</div><b>${fmtTime(mine.lunch_out_at)}</b></div>
-      <div class="result"><div class="muted">Regreso almuerzo</div><b>${fmtTime(mine.lunch_in_at)}</b></div>
-      <div class="result"><div class="muted">Salida jornada</div><b>${fmtTime(mine.closed_at)}</b></div>
-    </div>
-    ${!mine.lunch_out_at?'<button class="btn orange" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'lunch_out\\')">📸 SALIR A ALMUERZO</button>':''}
-    ${mine.lunch_out_at&&!mine.lunch_in_at?'<button class="btn green" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'lunch_in\\')">📸 REGRESAR DEL ALMUERZO</button>':''}
-    ${mine.lunch_in_at?'<div class="result success">Almuerzo registrado correctamente.</div>':''}
-    <button class="btn red" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'exit\\')">📸 SALIDA DE JORNADA</button>
-  </div>`:
-  `<div class="card"><b>Ingreso de hoy</b><div class="muted" style="margin-top:6px">Al iniciar la jornada se abrirá la cámara. La foto quedará guardada como evidencia del ingreso.</div><button class="btn" onclick="captureWorkdayPhoto(null,'entry')">📸 INICIAR JORNADA + FOTO</button></div>`}
+  ${action}
   <div class="card"><b>Historial de jornadas</b><table class="table"><tr><th>Fecha</th><th>Ingreso</th><th>Almuerzo</th><th>Regreso</th><th>Salida</th><th>Estado</th></tr>
   ${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td>${fmtTime(w.created_at)}</td><td>${fmtTime(w.lunch_out_at)}</td><td>${fmtTime(w.lunch_in_at)}</td><td>${fmtTime(w.closed_at)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Sin jornadas.</td></tr>'}</table></div>`);
  }catch(e){setHTML(`<div class="title">Jornada</div><div class="errorbox">${esc(e.message)}</div>`)}
@@ -375,8 +379,9 @@ async function workdayPage(){
 
 async function captureWorkdayPhoto(workdayId,type){
  workdayCameraTarget={workdayId,type};
+ const label=type==='entry'?'Ingreso':type==='lunch_out'?'Salida a almuerzo':type==='lunch_in'?'Regreso del almuerzo':'Salida de jornada';
  document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="workdayCamera"><div class="modalbox">
-  <div class="row"><b>📸 ${type==='entry'?'Ingreso':type==='lunch_out'?'Salida a almuerzo':type==='lunch_in'?'Regreso del almuerzo':'Salida de jornada'}</b><button class="btn alt" style="width:auto;margin:0" onclick="closeWorkdayCamera()">Cerrar</button></div>
+  <div class="row"><b>📸 ${label}</b><button class="btn alt" style="width:auto;margin:0" onclick="closeWorkdayCamera()">Cerrar</button></div>
   <video id="workdayVideo" class="camera-video" autoplay playsinline></video><canvas id="workdayCanvas" class="camera-canvas"></canvas>
   <div id="cameraMsg" class="muted center" style="margin:8px 0">Permite el acceso a la cámara.</div>
   <button class="btn green" onclick="takeWorkdayPhoto()">📷 TOMAR FOTO</button>
@@ -384,10 +389,10 @@ async function captureWorkdayPhoto(workdayId,type){
  </div></div>`);
  try{
   if(!navigator.mediaDevices?.getUserMedia)throw new Error('camera-unavailable');
-  workdayCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:1280}},audio:false});
+  workdayCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
   document.getElementById('workdayVideo').srcObject=workdayCameraStream;
  }catch(e){
-  document.getElementById('cameraMsg').textContent='No se pudo abrir la cámara automáticamente. Usa el botón de cámara del teléfono.';
+  document.getElementById('cameraMsg').textContent='No se pudo abrir la cámara automáticamente. Usa la opción de cámara del teléfono.';
   document.getElementById('workdayFallback').classList.remove('hidden');
  }
 }
@@ -417,17 +422,19 @@ async function saveWorkdayPhoto(file){
    if(existing.some(x=>x.status==='open'))return toast('Ya tienes una jornada abierta.',true);
    const {data,error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open'}).select().single();if(error)throw error;
    workdayId=data.id;
-  }else if(target.type==='exit'){
-   const {error}=await db.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
-  }else if(target.type==='lunch_out'){
-   const {error}=await db.from('workdays').update({lunch_out_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
-  }else if(target.type==='lunch_in'){
-   const {error}=await db.from('workdays').update({lunch_in_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
   }
   const ext=file.type==='image/png'?'png':'jpg';
   const path=`workdays/${workdayId}/${target.type}-${Date.now()}.${ext}`;
   const {error:up}=await db.storage.from(EVIDENCE_BUCKET).upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});if(up)throw up;
   const {error:ins}=await db.from('workday_evidence').insert({workday_id:workdayId,evidence_type:target.type,storage_path:path,uploaded_by:HAL_USER.id});if(ins)throw ins;
+
+  if(target.type==='lunch_out'){
+   const {error}=await db.from('workdays').update({lunch_out_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }else if(target.type==='lunch_in'){
+   const {error}=await db.from('workdays').update({lunch_in_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }else if(target.type==='exit'){
+   const {error}=await db.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }
   toast(target.type==='entry'?'Jornada iniciada y foto guardada':'Foto y registro de jornada guardados');
   workdayPage();
  }catch(e){toast(e.message,true)}
