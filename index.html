@@ -24,7 +24,10 @@ label{font-size:12px;color:var(--muted);display:block;margin-top:5px}.result{bac
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);background:#07111b;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:7px 4px;z-index:6}.nav button{background:none;border:0;color:var(--muted);font-size:10px}.nav button b{display:block;font-size:18px}.nav button.active{color:#42aaff}
 .toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:#183148;padding:11px 14px;border-radius:10px;display:none;z-index:20;font-size:13px;max-width:90%;text-align:center}
 .modal{position:fixed;inset:0;background:#000b;z-index:50;display:flex;align-items:center;justify-content:center;padding:18px}.modalbox{width:100%;max-width:480px;max-height:90vh;overflow:auto;background:#0e1d2a;border:1px solid var(--line);border-radius:18px;padding:18px}
-.photo-preview{max-width:100%;max-height:190px;border-radius:10px;border:1px solid var(--line);display:block;margin:8px auto}.hidden{display:none!important}
+.photo-preview{max-width:100%;max-height:190px;border-radius:10px;border:1px solid var(--line);display:block;margin:8px auto}
+.camera-video{width:100%;max-height:55vh;background:#000;border-radius:14px;display:block}
+.camera-canvas{display:none}
+.hidden{display:none!important}
 .small{font-size:11px}.danger{color:#ff7777}.success{color:#74e77b}.center{text-align:center}
 </style>
 </head>
@@ -194,8 +197,10 @@ async function salePage(){
  <div id="saleVehicleInfo"></div><div class="card"><b>Servicios</b><div id="serviceList"></div></div>
  <div class="card"><div class="row"><b>Total</b><span id="saleTotal" class="metric green">${money(0)}</span></div>
  <div class="pay"><button onclick="setPay('cash')" id="pay_cash">💵 Efectivo</button><button onclick="setPay('yape')" id="pay_yape">📱 Yape</button><button onclick="setPay('plin')" id="pay_plin">📱 Plin</button><button onclick="setPay('transfer')" id="pay_transfer">🏦 Transfer.</button></div>
- <label>Foto de placa (obligatoria)</label><input id="platePhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'platePreview')"><img id="platePreview" class="photo-preview hidden">
- <label>Comprobante de pago (obligatorio)</label><input id="paymentPhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'paymentPreview')"><img id="paymentPreview" class="photo-preview hidden">
+ <div class="card"><b>📤 Entrega / pago</b>
+ <div class="muted">Al terminar el servicio se toman únicamente estas dos evidencias.</div>
+ <label>Foto de placa al entregar (obligatoria)</label><input id="platePhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'platePreview')"><img id="platePreview" class="photo-preview hidden">
+ <label>Comprobante de pago (obligatorio)</label><input id="paymentPhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'paymentPreview')"><img id="paymentPreview" class="photo-preview hidden"></div>
  <button class="btn green" onclick="finishSale()">CONFIRMAR VENTA</button></div>`);
  selectSaleClient(selectedClient?.id||'');setPay('cash');
 }
@@ -285,7 +290,7 @@ async function newExpense(){
 
 async function morePage(){
  setHTML(`<div class="title">Más</div><div class="date">Herramientas y control</div>
- <div class="card"><button class="btn" onclick="inventoryPage()">📦 Inventario / Productos</button><button class="btn alt" onclick="workdayPage()">🕘 Jornada</button><button class="btn alt" onclick="correctionsPage()">✏️ Correcciones</button>${canManagePrices()?'<button class="btn alt" onclick="pricesPage()">💲 Precios</button>':''}<button class="btn red" onclick="logout()">Cerrar sesión</button></div>
+ <div class="card"><button class="btn" onclick="inventoryPage()">📦 INVENTARIO / PRODUCTOS</button><button class="btn alt" onclick="workdayPage()">🕘 JORNADA Y ALMUERZO</button><button class="btn alt" onclick="correctionsPage()">✏️ Correcciones</button>${canManagePrices()?'<button class="btn alt" onclick="pricesPage()">💲 Precios</button>':''}<button class="btn red" onclick="logout()">Cerrar sesión</button></div>
  <div class="card"><b>Perfil</b><div class="muted" style="margin-top:6px">${esc(HAL_USER.name)} · ${roleLabel(role())}</div></div>`)
 }
 async function inventoryPage(){
@@ -341,29 +346,91 @@ async function inventoryMove(productId=null){
   toast('Movimiento de inventario guardado');inventoryPage();
  }catch(e){toast(e.message,true)}
 }
+let workdayCameraStream=null,workdayCameraTarget=null;
+
 async function workdayPage(){
  try{
-  const rows=await q('workdays',db.from('workdays').select('*').order('work_date',{ascending:false}).limit(30));
+  const rows=await q('workdays',db.from('workdays').select('*').order('work_date',{ascending:false}).limit(50));
   const today=new Date().toISOString().slice(0,10);
   const mine=rows.find(w=>w.operator_id===HAL_USER.id&&w.work_date===today&&w.status==='open');
-  setHTML(`<div class="title">Jornada</div><div class="date">${fmtDate()}</div>
-  ${mine?`<div class="card"><b>Jornada abierta</b><div class="muted" style="margin-top:6px">La jornada de hoy está activa.</div><button class="btn red" onclick="closeWorkday('${mine.id}')">Cerrar jornada</button></div>`
-  :`<div class="card"><b>Jornada de hoy</b><div class="muted" style="margin-top:6px">Debes abrir la jornada antes de comenzar a operar.</div><button class="btn" onclick="openWorkday()">＋ Abrir jornada</button></div>`}
-  <div class="card"><b>Historial de jornadas</b><table class="table"><tr><th>Fecha</th><th>Estado</th><th>Cierre</th></tr>
-  ${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td><td>${w.closed_at?new Date(w.closed_at).toLocaleString('es-PE'):'—'}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">Sin jornadas.</td></tr>'}</table></div>`);
+  const fmtTime=x=>x?new Date(x).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):'—';
+  setHTML(`<div class="title">Jornada</div><div class="date">${fmtDate()} · Registro fotográfico obligatorio</div>
+  ${mine?`<div class="card"><div class="row"><b>Jornada abierta</b><span class="badge ok">ACTIVA</span></div>
+    <div class="grid" style="margin-top:8px">
+      <div class="result"><div class="muted">Ingreso</div><b>${fmtTime(mine.created_at)}</b></div>
+      <div class="result"><div class="muted">Salida almuerzo</div><b>${fmtTime(mine.lunch_out_at)}</b></div>
+      <div class="result"><div class="muted">Regreso almuerzo</div><b>${fmtTime(mine.lunch_in_at)}</b></div>
+      <div class="result"><div class="muted">Salida jornada</div><b>${fmtTime(mine.closed_at)}</b></div>
+    </div>
+    ${!mine.lunch_out_at?'<button class="btn orange" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'lunch_out\\')">📸 SALIR A ALMUERZO</button>':''}
+    ${mine.lunch_out_at&&!mine.lunch_in_at?'<button class="btn green" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'lunch_in\\')">📸 REGRESAR DEL ALMUERZO</button>':''}
+    ${mine.lunch_in_at?'<div class="result success">Almuerzo registrado correctamente.</div>':''}
+    <button class="btn red" onclick="captureWorkdayPhoto(\\''+mine.id+'\\',\\'exit\\')">📸 SALIDA DE JORNADA</button>
+  </div>`:
+  `<div class="card"><b>Ingreso de hoy</b><div class="muted" style="margin-top:6px">Al iniciar la jornada se abrirá la cámara. La foto quedará guardada como evidencia del ingreso.</div><button class="btn" onclick="captureWorkdayPhoto(null,'entry')">📸 INICIAR JORNADA + FOTO</button></div>`}
+  <div class="card"><b>Historial de jornadas</b><table class="table"><tr><th>Fecha</th><th>Ingreso</th><th>Almuerzo</th><th>Regreso</th><th>Salida</th><th>Estado</th></tr>
+  ${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td>${fmtTime(w.created_at)}</td><td>${fmtTime(w.lunch_out_at)}</td><td>${fmtTime(w.lunch_in_at)}</td><td>${fmtTime(w.closed_at)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Sin jornadas.</td></tr>'}</table></div>`);
  }catch(e){setHTML(`<div class="title">Jornada</div><div class="errorbox">${esc(e.message)}</div>`)}
 }
-async function openWorkday(){
- const d=new Date().toISOString().slice(0,10);
+
+async function captureWorkdayPhoto(workdayId,type){
+ workdayCameraTarget={workdayId,type};
+ document.body.insertAdjacentHTML('beforeend',`<div class="modal" id="workdayCamera"><div class="modalbox">
+  <div class="row"><b>📸 ${type==='entry'?'Ingreso':type==='lunch_out'?'Salida a almuerzo':type==='lunch_in'?'Regreso del almuerzo':'Salida de jornada'}</b><button class="btn alt" style="width:auto;margin:0" onclick="closeWorkdayCamera()">Cerrar</button></div>
+  <video id="workdayVideo" class="camera-video" autoplay playsinline></video><canvas id="workdayCanvas" class="camera-canvas"></canvas>
+  <div id="cameraMsg" class="muted center" style="margin:8px 0">Permite el acceso a la cámara.</div>
+  <button class="btn green" onclick="takeWorkdayPhoto()">📷 TOMAR FOTO</button>
+  <input id="workdayFallback" class="hidden" type="file" accept="image/*" capture="environment" onchange="useWorkdayFallback(this)">
+ </div></div>`);
  try{
-  const existing=await q('workdays',db.from('workdays').select('id,status').eq('operator_id',HAL_USER.id).eq('work_date',d).limit(10));
-  if(existing.some(x=>x.status==='open'))return toast('Ya tienes una jornada abierta.',true);
-  const {error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open'});if(error)throw error;
-  toast('Jornada abierta');workdayPage()
- }catch(e){toast(e.message,true)}
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('camera-unavailable');
+  workdayCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:1280}},audio:false});
+  document.getElementById('workdayVideo').srcObject=workdayCameraStream;
+ }catch(e){
+  document.getElementById('cameraMsg').textContent='No se pudo abrir la cámara automáticamente. Usa el botón de cámara del teléfono.';
+  document.getElementById('workdayFallback').classList.remove('hidden');
+ }
 }
-async function closeWorkday(id){
- try{const {error}=await db.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Jornada cerrada');workdayPage()}catch(e){toast(e.message,true)}
+function closeWorkdayCamera(){
+ if(workdayCameraStream){workdayCameraStream.getTracks().forEach(t=>t.stop());workdayCameraStream=null}
+ document.getElementById('workdayCamera')?.remove();workdayCameraTarget=null
+}
+function canvasBlob(canvas){
+ return new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.86))
+}
+async function takeWorkdayPhoto(){
+ const video=document.getElementById('workdayVideo'),canvas=document.getElementById('workdayCanvas');
+ if(!video?.videoWidth)return toast('La cámara todavía no está lista.',true);
+ canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);
+ const blob=await canvasBlob(canvas);await saveWorkdayPhoto(blob);closeWorkdayCamera()
+}
+async function useWorkdayFallback(input){
+ const f=input.files?.[0];if(!f)return;await saveWorkdayPhoto(f);closeWorkdayCamera()
+}
+async function saveWorkdayPhoto(file){
+ const target=workdayCameraTarget;if(!target)return;
+ try{
+  let workdayId=target.workdayId;
+  if(target.type==='entry'){
+   const d=new Date().toISOString().slice(0,10);
+   const existing=await q('workdays',db.from('workdays').select('id,status').eq('operator_id',HAL_USER.id).eq('work_date',d).limit(10));
+   if(existing.some(x=>x.status==='open'))return toast('Ya tienes una jornada abierta.',true);
+   const {data,error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open'}).select().single();if(error)throw error;
+   workdayId=data.id;
+  }else if(target.type==='exit'){
+   const {error}=await db.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }else if(target.type==='lunch_out'){
+   const {error}=await db.from('workdays').update({lunch_out_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }else if(target.type==='lunch_in'){
+   const {error}=await db.from('workdays').update({lunch_in_at:new Date().toISOString()}).eq('id',workdayId).eq('operator_id',HAL_USER.id);if(error)throw error;
+  }
+  const ext=file.type==='image/png'?'png':'jpg';
+  const path=`workdays/${workdayId}/${target.type}-${Date.now()}.${ext}`;
+  const {error:up}=await db.storage.from(EVIDENCE_BUCKET).upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});if(up)throw up;
+  const {error:ins}=await db.from('workday_evidence').insert({workday_id:workdayId,evidence_type:target.type,storage_path:path,uploaded_by:HAL_USER.id});if(ins)throw ins;
+  toast(target.type==='entry'?'Jornada iniciada y foto guardada':'Foto y registro de jornada guardados');
+  workdayPage();
+ }catch(e){toast(e.message,true)}
 }
 async function correctionsPage(){
  try{const rows=await q('correction_requests',db.from('correction_requests').select('*').order('created_at',{ascending:false}).limit(50));setHTML(`<div class="title">Correcciones</div>${canCorrect()?'<button class="btn" onclick="requestCorrection()">＋ Solicitar / registrar corrección</button>':''}<div class="card"><table class="table"><tr><th>Fecha</th><th>Entidad</th><th>Estado</th><th>Motivo</th></tr>${rows.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('es-PE')}</td><td>${esc(r.entity_type)}</td><td><span class="badge ${r.status==='approved'?'ok':r.status==='pending'?'warn':'bad'}">${esc(r.status)}</span></td><td>${esc(r.reason)}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
