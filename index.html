@@ -4,59 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111b">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="assets/icon.svg">
-<title>HAL Garage V11 - Sistema operativo</title>
-<style id="v2fix">.loading{padding:14px;color:#91a4b7}.errorbox{background:#4a151a;border:1px solid #a33;border-radius:10px;padding:12px;margin-top:10px;color:#ffd7d7}.successbox{background:#12351a;border:1px solid #2d8a39;border-radius:10px;padding:12px;margin-top:10px;color:#d8ffd8}.smallbtn{padding:8px 10px;border:1px solid #294157;border-radius:8px;background:#0b1824;color:#fff}</style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-<script>
-const SUPABASE_URL = 'https://maqnglazkhwtzskfddgc.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
-
-let halDb = null;
-let SUPABASE_READY = false;
-
-try {
-  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    throw new Error('No se cargó la librería de Supabase. Revisa Internet y actualiza la página.');
-  }
-
-  // Supabase se usa para los datos del negocio.
-  // El acceso de HAL Garage es fijo y no depende de Supabase Auth.
-  halDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false
-    }
-  });
-
-  SUPABASE_READY = !!halDb;
-} catch (e) {
-  console.error('HAL Garage / Supabase:', e);
-}
-</script>
-<script>
-// HAL Garage V5: evita que una versión antigua del Service Worker deje cargado
-// un JavaScript anterior en GitHub Pages. No borra datos de Supabase.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
-}
-</script>
+<title>HAL Garage — Sistema operativo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--red:#ff6262;--orange:#ffb52e}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:480px;margin:auto;min-height:100vh;background:#091722}
-header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:15px 16px;display:flex;justify-content:space-between}.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.muted{color:var(--muted);font-size:12px}
-main{padding:16px 15px 92px}.title{font-size:25px;font-weight:850;margin:2px 0}.date{color:var(--muted);font-size:12px;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}.metric{font-size:25px;font-weight:850;margin-top:4px}.green{color:var(--green)}.blue{color:#43abff}.red{color:var(--red)}.orange{color:var(--orange)}
-button,input,select,textarea{font:inherit}button{cursor:pointer}.btn{width:100%;border:0;border-radius:10px;padding:12px;margin-top:8px;background:#117ff0;color:#fff;font-weight:750}.btn.alt{background:#152b3d}.btn.green{background:#32a92b}.btn.red{background:#b8323f}.btn:disabled{opacity:.4}
-input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;color:#fff;border-radius:9px;padding:11px;margin:5px 0 10px}.result{background:#102637;border:1px solid #28506c;border-radius:10px;padding:11px;margin-top:8px}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.service{display:flex;justify-content:space-between;padding:12px;border:1px solid var(--line);border-radius:10px;margin:7px 0;background:#0b1824}.service.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pay button{padding:11px;border:1px solid #294157;background:#0b1824;color:white;border-radius:9px}.pay button.active{border-color:var(--blue);background:#103654}.table{width:100%;border-collapse:collapse;font-size:12px}.table td,.table th{padding:8px 4px;border-bottom:1px solid #203244;text-align:left}.badge{display:inline-block;padding:4px 8px;border-radius:99px;font-size:10px;background:#183047}.ok{background:#12351a;color:#74e77b}.warn{background:#4a3507;color:#ffc04d}.bad{background:#4a151a;color:#ff7777}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);background:#07111b;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:7px 4px;z-index:6}.nav button{background:none;border:0;color:var(--muted);font-size:10px}.nav button b{display:block;font-size:18px}.nav button.active{color:#42aaff}.toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%);background:#183148;padding:11px 14px;border-radius:10px;display:none;z-index:10;font-size:13px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.app{max-width:520px;margin:auto;min-height:100vh;background:#091722}
+header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:14px 15px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.muted{color:var(--muted);font-size:12px}
+main{padding:15px 14px 95px}.title{font-size:25px;font-weight:850;margin:2px 0}.date{color:var(--muted);font-size:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;margin-top:10px}.metric{font-size:24px;font-weight:850;margin-top:4px}
+.green{color:var(--green)}.blue{color:#43abff}.red{color:var(--red)}.orange{color:var(--orange)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.btn{width:100%;border:0;border-radius:10px;padding:11px;margin-top:8px;background:#117ff0;color:#fff;font-weight:750}.btn.alt{background:#152b3d}.btn.green{background:#32a92b}.btn.red{background:#b8323f}.btn.orange{background:#9a6a00}.btn:disabled{opacity:.4;cursor:not-allowed}
+input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;color:#fff;border-radius:9px;padding:10px;margin:5px 0 9px}
+label{font-size:12px;color:var(--muted);display:block;margin-top:5px}.result{background:#102637;border:1px solid #28506c;border-radius:10px;padding:10px;margin-top:8px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.service{display:flex;justify-content:space-between;align-items:center;padding:11px;border:1px solid var(--line);border-radius:10px;margin:7px 0;background:#0b1824}
+.service.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pay button{padding:10px;border:1px solid #294157;background:#0b1824;color:white;border-radius:9px}.pay button.active{border-color:var(--blue);background:#103654}
+.table{width:100%;border-collapse:collapse;font-size:12px}.table td,.table th{padding:8px 4px;border-bottom:1px solid #203244;text-align:left;vertical-align:top}.badge{display:inline-block;padding:4px 8px;border-radius:99px;font-size:10px;background:#183047}.ok{background:#12351a;color:#74e77b}.warn{background:#4a3507;color:#ffc04d}.bad{background:#4a151a;color:#ff7777}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);background:#07111b;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:7px 4px;z-index:6}.nav button{background:none;border:0;color:var(--muted);font-size:10px}.nav button b{display:block;font-size:18px}.nav button.active{color:#42aaff}
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:#183148;padding:11px 14px;border-radius:10px;display:none;z-index:20;font-size:13px;max-width:90%;text-align:center}
+.modal{position:fixed;inset:0;background:#000b;z-index:50;display:flex;align-items:center;justify-content:center;padding:18px}.modalbox{width:100%;max-width:480px;max-height:90vh;overflow:auto;background:#0e1d2a;border:1px solid var(--line);border-radius:18px;padding:18px}
+.photo-preview{max-width:100%;max-height:190px;border-radius:10px;border:1px solid var(--line);display:block;margin:8px auto}.hidden{display:none!important}
+.small{font-size:11px}.danger{color:#ff7777}.success{color:#74e77b}.center{text-align:center}
 </style>
 </head>
 <body>
 <div class="app">
-<header><div class="logo">HAL <b>GARAGE</b></div><div class="muted" id="userLabel">Modo demo</div></header>
+<header><div class="logo">HAL <b>GARAGE</b></div><div class="muted" id="userLabel">Sin sesión</div></header>
 <main id="app"></main>
 <nav class="nav">
 <button data-page="dashboard" onclick="go('dashboard')"><b>⌂</b>Inicio</button>
@@ -64,1076 +38,272 @@ input,select,textarea{width:100%;background:#07131f;border:1px solid #2a4359;col
 <button data-page="sale" onclick="go('sale')"><b>＋</b>Venta</button>
 <button data-page="cash" onclick="go('cash')"><b>💰</b>Caja</button>
 <button data-page="more" onclick="go('more')"><b>☰</b>Más</button>
-</nav></div>
+</nav>
+</div>
 <div class="toast" id="toast"></div>
+
 <script>
-  /* =====================================================
-   HAL GARAGE — SISTEMA PRINCIPAL
-   Supabase + Autenticación + Dashboard + Clientes
-   ===================================================== */
+const SUPABASE_URL='https://maqnglazkhwtzskfddgc.supabase.co';
+const SUPABASE_KEY='sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
+const EVIDENCE_BUCKET='hal-garage-evidence';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{autoRefreshToken:false,persistSession:false,detectSessionInUrl:false}});
 
-let HAL_USER = null;
-let selectedClient = null;
+let HAL_USER=null, page='dashboard', clients=[], vehicles=[], vehicleTypes=[], services=[], prices=[], selectedClient=null, selectedVehicle=null;
+let saleItems=[], salePayment='cash', saleEvidence={plate:null,payment:null};
 
-function dbReady() {
-  if (!halDb || typeof halDb.from !== 'function') {
-    toast('No se pudo inicializar la conexión con Supabase. Recarga la aplicación.', 'error');
-    return false;
-  }
-  return true;
+const FIXED_USERS={
+ admin:{role:'admin',name:'HAL GARAGE',password:'hal.garage.2020'},
+ supervisor:{role:'supervisor',name:'Hal Garage',password:'Halgarage2020'},
+ operario:{role:'operator',name:'hal garage',password:'hal2020'}
+};
+
+function money(n){return 'S/ '+Number(n||0).toFixed(2)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function toast(msg,error=false){const e=document.getElementById('toast');e.textContent=msg;e.style.background=error?'#b42318':'#16803c';e.style.display='block';clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.style.display='none',2600)}
+function setHTML(x){document.getElementById('app').innerHTML=x}
+function role(){return HAL_USER?.role}
+function isAdmin(){return role()==='admin'}
+function canOperate(){return ['admin','supervisor','operator'].includes(role())}
+function requireLogin(){if(HAL_USER)return true;showLogin();return false}
+function createdBy(){return HAL_USER?.id?{created_by:HAL_USER.id}:{}}
+function canManagePrices(){return isAdmin()}
+function canCorrect(){return isAdmin()||role()==='supervisor'}
+function fmtDate(d=new Date()){return new Intl.DateTimeFormat('es-PE',{dateStyle:'medium'}).format(d)}
+function activeNav(){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
+async function q(table,query){const {data,error}=await query;if(error)throw error;return data||[]}
+
+async function resolveProfile(){
+  try{
+    const rows=await q('profiles',db.from('profiles').select('id,full_name,role,active').eq('active',true).limit(100));
+    const exact=rows.find(x=>String(x.full_name).trim().toLowerCase()===HAL_USER.name.trim().toLowerCase());
+    const byRole=rows.find(x=>x.role===HAL_USER.role||(HAL_USER.role==='operator'&&x.role==='operario'));
+    HAL_USER.id=exact?.id||byRole?.id||null;
+  }catch(e){console.warn(e)}
 }
 
-function requireUser() {
-  if (HAL_USER) return true;
-  showLogin();
-  return false;
+function showLogin(){
+ const old=document.getElementById('login');if(old)old.remove();
+ document.body.insertAdjacentHTML('afterbegin',`<div class="modal" id="login"><div class="modalbox">
+ <div class="center"><div style="font-size:30px;font-weight:850">HAL <span class="blue">GARAGE</span></div><div class="muted">Sistema de gestión</div></div>
+ <label>Perfil</label><select id="loginProfile"><option value="admin">👑 Administrador</option><option value="supervisor">🛠️ Supervisor</option><option value="operario">🚗 Operario</option></select>
+ <label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+ <button class="btn" onclick="login()">INGRESAR</button><div id="loginMsg" class="danger center small" style="margin-top:10px"></div>
+ </div></div>`);
 }
+async function login(){
+ const k=document.getElementById('loginProfile').value,p=document.getElementById('loginPass').value,u=FIXED_USERS[k],m=document.getElementById('loginMsg');
+ if(p!==u.password){m.textContent='Contraseña incorrecta.';return}
+ HAL_USER={id:null,name:u.name,role:u.role};sessionStorage.setItem('HAL_FIXED_USER',k);await resolveProfile();
+ document.getElementById('login')?.remove();document.getElementById('userLabel').textContent=HAL_USER.name+' · '+roleLabel(role());go(page);toast('Sesión iniciada');
+}
+function logout(){HAL_USER=null;sessionStorage.removeItem('HAL_FIXED_USER');document.getElementById('userLabel').textContent='Sin sesión';showLogin()}
+function roleLabel(r){return r==='admin'?'Administrador':r==='supervisor'?'Supervisor':'Operario'}
 
-function withTimeout(promise, ms=12000) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión a Internet y la configuración de Supabase.')), ms))
+async function boot(){
+ const k=sessionStorage.getItem('HAL_FIXED_USER');
+ if(k&&FIXED_USERS[k]){const u=FIXED_USERS[k];HAL_USER={id:null,name:u.name,role:u.role};await resolveProfile();document.getElementById('userLabel').textContent=HAL_USER.name+' · '+roleLabel(role())}
+ if(!HAL_USER){showLogin();return}
+ go('dashboard');
+}
+function go(p){if(!requireLogin())return;page=p;activeNav();({dashboard:dashboard,clients:clientsPage,sale:salePage,cash:cashPage,more:morePage}[p]||dashboard)()}
+
+async function dashboard(){
+ try{
+  const today=new Date();const start=new Date(today);start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);
+  const [salesToday,expensesToday,allClients,low]=await Promise.all([
+   q('sales',db.from('sales').select('id,total,status,created_at').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).neq('status','voided')),
+   q('expenses',db.from('expenses').select('id,amount,created_at').gte('created_at',start.toISOString()).lt('created_at',end.toISOString())),
+   q('clients',db.from('clients').select('id,full_name,phone').eq('active',true).order('full_name')),
+   q('products',db.from('products').select('id,name,stock,minimum_stock').eq('active',true).order('name'))
   ]);
+  const income=salesToday.reduce((a,x)=>a+Number(x.total||0),0),expense=expensesToday.reduce((a,x)=>a+Number(x.amount||0),0);
+  setHTML(`<div class="title">Inicio</div><div class="date">${fmtDate()}</div>
+  <div class="grid"><div class="card"><div class="muted">Ventas hoy</div><div class="metric green">${money(income)}</div></div>
+  <div class="card"><div class="muted">Gastos hoy</div><div class="metric red">${money(expense)}</div></div>
+  <div class="card"><div class="muted">Neto del día</div><div class="metric blue">${money(income-expense)}</div></div>
+  <div class="card"><div class="muted">Clientes</div><div class="metric">${allClients.length}</div></div></div>
+  <div class="card"><div class="row"><b>Acciones rápidas</b><span class="badge">${roleLabel(role())}</span></div>
+  <button class="btn" onclick="go('sale')">＋ Registrar venta</button><button class="btn alt" onclick="go('clients')">👤 Buscar cliente</button><button class="btn alt" onclick="cashPage()">💰 Ver caja</button></div>
+  <div class="card"><b>Stock bajo</b>${low.filter(x=>Number(x.stock)<=Number(x.minimum_stock)).map(x=>`<div class="result row"><span>${esc(x.name)}</span><span class="badge warn">${esc(x.stock)}</span></div>`).join('')||'<div class="muted" style="margin-top:8px">No hay productos bajo mínimo.</div>'}</div>
+  <div class="card"><b>Seguridad</b><div class="muted" style="margin-top:7px">Los precios y correcciones están bloqueados para operarios. Las evidencias de placa y pago se guardan junto a la venta.</div></div>`);
+ }catch(e){setHTML(`<div class="title">Inicio</div><div class="errorbox">${esc(e.message)}</div>`)}
 }
 
-/* =====================================================
-   UTILIDADES
-   ===================================================== */
+async function loadCatalog(){
+ [clients,vehicles,vehicleTypes,services,prices]=await Promise.all([
+  q('clients',db.from('clients').select('*').eq('active',true).order('full_name')),
+  q('vehicles',db.from('vehicles').select('*').eq('active',true).order('plate')),
+  q('vehicle_types',db.from('vehicle_types').select('*').eq('active',true).order('name')),
+  q('services',db.from('services').select('*').eq('active',true).order('name')),
+  q('service_prices',db.from('service_prices').select('*').eq('active',true))
+ ]);
+}
+async function clientsPage(){
+ try{await loadCatalog()}catch(e){}
+ setHTML(`<div class="title">Clientes</div><div class="date">Clientes y vehículos registrados</div>
+ <input id="clientSearch" placeholder="Buscar por nombre, teléfono o placa..." oninput="renderClientResults()">
+ <button class="btn" onclick="newClient()">＋ Nuevo cliente</button><div id="clientResults"></div>`);
+ renderClientResults();
+}
+function renderClientResults(){
+ const term=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+ const rows=clients.filter(c=>{
+  const vs=vehicles.filter(v=>v.client_id===c.id).map(v=>v.plate).join(' ');
+  return (c.full_name+' '+(c.phone||'')+' '+vs).toLowerCase().includes(term)
+ });
+ document.getElementById('clientResults').innerHTML=rows.slice(0,50).map(c=>{
+  const vs=vehicles.filter(v=>v.client_id===c.id);
+  return `<div class="card"><div class="row"><b>${esc(c.full_name)}</b><span class="badge">${vs.length} vehículo(s)</span></div><div class="muted">${esc(c.phone||'Sin teléfono')}</div>
+  ${vs.map(v=>`<div class="result row"><span>🚗 ${esc(v.plate)} · ${esc(v.brand||'')} ${esc(v.model||'')}</span><button class="smallbtn" onclick="startSale('${c.id}','${v.id}')">Vender</button></div>`).join('')}
+  <button class="btn alt" onclick="addVehicle('${c.id}')">＋ Agregar vehículo</button></div>`
+ }).join('')||'<div class="card muted">No se encontraron clientes.</div>';
+}
+async function newClient(){
+ const name=prompt('Nombre completo del cliente');if(!name?.trim())return;
+ const phone=prompt('Teléfono (opcional)')||null;
+ try{const {data,error}=await db.from('clients').insert({full_name:name.trim(),phone,...createdBy()}).select().single();if(error)throw error;toast('Cliente creado');await clientsPage()}catch(e){toast(e.message,true)}
+}
+async function addVehicle(clientId){
+ const plate=prompt('Placa');if(!plate?.trim())return;
+ const vt=prompt('Tipo: Auto / Camioneta / SUV / Camioneta XL');if(!vt?.trim())return;
+ const type=vehicleTypes.find(x=>x.name.toLowerCase()===vt.trim().toLowerCase())||vehicleTypes[0];
+ const brand=prompt('Marca (opcional)')||null,model=prompt('Modelo (opcional)')||null;
+ try{const {error}=await db.from('vehicles').insert({client_id:clientId,vehicle_type_id:type.id,plate:plate.trim().toUpperCase(),brand,model,...createdBy()});if(error)throw error;toast('Vehículo registrado');await clientsPage()}catch(e){toast(e.message,true)}
+}
+function startSale(c,v){selectedClient=clients.find(x=>x.id===c);selectedVehicle=vehicles.find(x=>x.id===v);go('sale')}
 
-function money(n) {
-  return 'S/ ' + Number(n || 0).toFixed(2);
+async function salePage(){
+ try{await loadCatalog()}catch(e){toast(e.message,true)}
+ saleItems=[];salePayment='cash';saleEvidence={plate:null,payment:null};
+ setHTML(`<div class="title">Nueva venta</div><div class="date">Registra servicios y evidencia</div>
+ <label>Cliente</label><select id="saleClient" onchange="selectSaleClient(this.value)"><option value="">Seleccionar...</option>${clients.map(c=>`<option value="${c.id}" ${selectedClient?.id===c.id?'selected':''}>${esc(c.full_name)}</option>`).join('')}</select>
+ <label>Vehículo</label><select id="saleVehicle" onchange="selectSaleVehicle(this.value)"><option value="">Seleccionar...</option></select>
+ <div id="saleVehicleInfo"></div><div class="card"><b>Servicios</b><div id="serviceList"></div></div>
+ <div class="card"><div class="row"><b>Total</b><span id="saleTotal" class="metric green">${money(0)}</span></div>
+ <div class="pay"><button onclick="setPay('cash')" id="pay_cash">💵 Efectivo</button><button onclick="setPay('yape')" id="pay_yape">📱 Yape</button><button onclick="setPay('plin')" id="pay_plin">📱 Plin</button><button onclick="setPay('transfer')" id="pay_transfer">🏦 Transfer.</button></div>
+ <label>Foto de placa (obligatoria)</label><input id="platePhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'platePreview')"><img id="platePreview" class="photo-preview hidden">
+ <label>Comprobante de pago (obligatorio)</label><input id="paymentPhoto" type="file" accept="image/*" capture="environment" onchange="previewFile(this,'paymentPreview')"><img id="paymentPreview" class="photo-preview hidden">
+ <button class="btn green" onclick="finishSale()">CONFIRMAR VENTA</button></div>`);
+ selectSaleClient(selectedClient?.id||'');setPay('cash');
+}
+function selectSaleClient(id){
+ selectedClient=clients.find(c=>c.id===id)||null;const s=document.getElementById('saleVehicle');if(!s)return;
+ const vs=vehicles.filter(v=>v.client_id===id);s.innerHTML='<option value="">Seleccionar...</option>'+vs.map(v=>`<option value="${v.id}" ${selectedVehicle?.id===v.id?'selected':''}>${esc(v.plate)} · ${esc(v.brand||'')} ${esc(v.model||'')}</option>`).join('');
+ if(selectedVehicle&&selectedVehicle.client_id===id)selectSaleVehicle(selectedVehicle.id);else{selectedVehicle=null;document.getElementById('saleVehicleInfo').innerHTML='';renderServices()}
+}
+function selectSaleVehicle(id){
+ selectedVehicle=vehicles.find(v=>v.id===id)||null;
+ const t=vehicleTypes.find(x=>x.id===selectedVehicle?.vehicle_type_id);
+ document.getElementById('saleVehicleInfo').innerHTML=selectedVehicle?`<div class="result"><b>${esc(selectedVehicle.plate)}</b> · ${esc(t?.name||'')}</div>`:'';
+ renderServices();
+}
+function priceFor(serviceId,vehicleTypeId){return prices.find(p=>p.service_id===serviceId&&p.vehicle_type_id===vehicleTypeId)}
+function renderServices(){
+ const box=document.getElementById('serviceList');if(!box)return;
+ if(!selectedVehicle){box.innerHTML='<div class="muted">Selecciona un vehículo.</div>';updateTotal();return}
+ const rows=services.map(s=>{const p=priceFor(s.id,selectedVehicle.vehicle_type_id);if(!p)return '';const active=saleItems.some(i=>i.service_id===s.id);return `<div class="service ${active?'active':''}" onclick="toggleService('${s.id}')"><span>${esc(s.name)}</span><b>${money(p.price)}</b></div>`}).join('');
+ box.innerHTML=rows||'<div class="muted">No hay precios para este tipo de vehículo.</div>';updateTotal()
+}
+function toggleService(id){
+ if(!selectedVehicle)return;
+ const i=saleItems.findIndex(x=>x.service_id===id);if(i>=0)saleItems.splice(i,1);else{const s=services.find(x=>x.id===id),p=priceFor(id,selectedVehicle.vehicle_type_id);saleItems.push({service_id:id,vehicle_type_id:selectedVehicle.vehicle_type_id,service_name_snapshot:s.name,price_applied:Number(p.price),quantity:1,subtotal:Number(p.price)})}
+ renderServices()
+}
+function updateTotal(){const t=saleItems.reduce((a,x)=>a+x.subtotal,0);const e=document.getElementById('saleTotal');if(e)e.textContent=money(t)}
+function setPay(p){salePayment=p;document.querySelectorAll('.pay button').forEach(b=>b.classList.remove('active'));document.getElementById('pay_'+p)?.classList.add('active')}
+function previewFile(input,id){const f=input.files?.[0],img=document.getElementById(id);if(!f||!img)return;img.src=URL.createObjectURL(f);img.classList.remove('hidden')}
+async function uploadEvidence(saleId,type,file){
+ if(!file)throw new Error('Falta la foto de '+(type==='plate'?'placa':'comprobante de pago')+'.');
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('La evidencia debe ser JPG, PNG o WEBP.');
+ if(file.size>5*1024*1024)throw new Error('Cada foto debe pesar máximo 5 MB.');
+ const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+ const path=`sales/${saleId}/${type}-${Date.now()}.${ext}`;
+ const {error}=await db.storage.from(EVIDENCE_BUCKET).upload(path,file,{contentType:file.type,upsert:false});
+ if(error)throw error;
+ const {error:e2}=await db.from('sale_evidence').insert({sale_id:saleId,evidence_type:type,storage_path:path,...createdBy()});
+ if(e2)throw e2;
+ return path;
+}
+async function finishSale(){
+ if(!canOperate())return toast('No tienes permiso.',true);
+ if(!selectedClient||!selectedVehicle)return toast('Selecciona cliente y vehículo.',true);
+ if(!saleItems.length)return toast('Agrega al menos un servicio.',true);
+ const plate=document.getElementById('platePhoto')?.files?.[0],payment=document.getElementById('paymentPhoto')?.files?.[0];
+ if(!plate||!payment)return toast('La foto de placa y el comprobante son obligatorios.',true);
+ const total=saleItems.reduce((a,x)=>a+x.subtotal,0);
+ try{
+  const {data:sale,error}=await db.from('sales').insert({client_id:selectedClient.id,vehicle_id:selectedVehicle.id,total,status:'confirmed',...createdBy()}).select().single();if(error)throw error;
+  const {error:ie}=await db.from('sale_items').insert(saleItems.map(x=>({...x,sale_id:sale.id})));if(ie)throw ie;
+  const {error:pe}=await db.from('payments').insert({sale_id:sale.id,method:salePayment,amount:total,...createdBy()});if(pe)throw pe;
+  const {error:ce}=await db.from('cash_movements').insert({movement_type:'income',payment_method:salePayment,amount:total,sale_id:sale.id,...createdBy()});if(ce)throw ce;
+  await uploadEvidence(sale.id,'plate',plate);await uploadEvidence(sale.id,'payment',payment);
+  toast('Venta registrada correctamente');selectedClient=null;selectedVehicle=null;saleItems=[];setTimeout(()=>go('dashboard'),700);
+ }catch(e){toast(e.message,true)}
 }
 
-function toast(msg, type = 'ok') {
-  const el = document.getElementById('toast');
-  if (!el) return;
-
-  el.textContent = msg;
-  el.style.display = 'block';
-  el.style.padding = '12px 16px';
-  el.style.position = 'fixed';
-  el.style.bottom = '90px';
-  el.style.left = '50%';
-  el.style.transform = 'translateX(-50%)';
-  el.style.zIndex = '99999';
-  el.style.borderRadius = '12px';
-  el.style.background = type === 'error' ? '#b42318' : '#16803c';
-  el.style.color = '#fff';
-
-  setTimeout(() => {
-    el.style.display = 'none';
-  }, 2500);
+async function cashPage(){
+ try{
+  const start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);
+  const [mov,exp]=await Promise.all([
+   q('cash_movements',db.from('cash_movements').select('*').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).order('created_at',{ascending:false})),
+   q('expenses',db.from('expenses').select('*').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).order('created_at',{ascending:false}))
+  ]);
+  const income=mov.filter(x=>x.movement_type==='income').reduce((a,x)=>a+Number(x.amount),0),expense=exp.reduce((a,x)=>a+Number(x.amount),0);
+  setHTML(`<div class="title">Caja</div><div class="date">${fmtDate()}</div><div class="grid"><div class="card"><div class="muted">Ingresos</div><div class="metric green">${money(income)}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(expense)}</div></div></div>
+  ${isAdmin()||role()==='supervisor'?'<button class="btn" onclick="newExpense()">＋ Registrar gasto</button>':''}
+  <div class="card"><b>Movimientos</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Monto</th><th>Método</th></tr>${mov.map(x=>`<tr><td>${new Date(x.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td><td>${x.movement_type==='income'?'Ingreso':'Salida'}</td><td>${money(x.amount)}</td><td>${esc(x.payment_method)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Sin movimientos.</td></tr>'}</table></div>`);
+ }catch(e){setHTML(`<div class="title">Caja</div><div class="errorbox">${esc(e.message)}</div>`)}
+}
+async function newExpense(){
+ if(!(isAdmin()||role()==='supervisor'))return;
+ const concept=prompt('Concepto del gasto');if(!concept?.trim())return;const amount=Number(prompt('Monto S/'));if(!(amount>0))return;
+ const method=(prompt('Método: cash / yape / plin / transfer / other')||'cash').trim();
+ try{
+  const {data,error}=await db.from('expenses').insert({concept:concept.trim(),amount,payment_method:method,...createdBy()}).select().single();if(error)throw error;
+  const {error:e2}=await db.from('cash_movements').insert({movement_type:'expense',payment_method:method,amount,expense_id:data.id,...createdBy()});if(e2)throw e2;
+  toast('Gasto registrado');cashPage()
+ }catch(e){toast(e.message,true)}
 }
 
-function setHTML(html) {
-  const app = document.getElementById('app');
-  if (app) app.innerHTML = html;
+async function morePage(){
+ setHTML(`<div class="title">Más</div><div class="date">Herramientas y control</div>
+ <div class="card"><button class="btn" onclick="inventoryPage()">📦 Inventario</button><button class="btn alt" onclick="workdayPage()">🕘 Jornada</button><button class="btn alt" onclick="correctionsPage()">✏️ Correcciones</button>${isAdmin()?'<button class="btn alt" onclick="pricesPage()">💲 Precios</button>':''}<button class="btn red" onclick="logout()">Cerrar sesión</button></div>
+ <div class="card"><b>Perfil</b><div class="muted" style="margin-top:6px">${esc(HAL_USER.name)} · ${roleLabel(role())}</div></div>`)
+}
+async function inventoryPage(){
+ try{const ps=await q('products',db.from('products').select('*').eq('active',true).order('name'));setHTML(`<div class="title">Inventario</div><button class="btn" onclick="inventoryMove()">＋ Movimiento</button><div class="card"><table class="table"><tr><th>Producto</th><th>Stock</th><th>Mín.</th></tr>${ps.map(p=>`<tr><td>${esc(p.name)}</td><td class="${Number(p.stock)<=Number(p.minimum_stock)?'orange':''}">${esc(p.stock)} ${esc(p.unit_name)}</td><td>${esc(p.minimum_stock)}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
+}
+async function inventoryMove(){
+ const name=prompt('Nombre exacto del producto');if(!name)return;const ps=await q('products',db.from('products').select('*').ilike('name',name).limit(5));const p=ps[0];if(!p)return toast('Producto no encontrado',true);
+ const type=prompt('Tipo: entry / exit / adjustment');const qty=Number(prompt('Cantidad'));if(!type||!(qty>0))return;
+ try{const {error}=await db.from('inventory_movements').insert({product_id:p.id,movement_type:type,quantity:qty,reason:'Movimiento manual',...createdBy()});if(error)throw error;
+  let stock=Number(p.stock);if(type==='entry')stock+=qty;else if(type==='exit')stock-=qty;else stock=qty;if(stock<0)throw new Error('Stock insuficiente');
+  const {error:e}=await db.from('products').update({stock,updated_at:new Date().toISOString()}).eq('id',p.id);if(e)throw e;toast('Inventario actualizado');inventoryPage()
+ }catch(e){toast(e.message,true)}
+}
+async function workdayPage(){
+ try{const rows=await q('workdays',db.from('workdays').select('*').order('work_date',{ascending:false}).limit(30));setHTML(`<div class="title">Jornada</div><button class="btn" onclick="openWorkday()">＋ Abrir jornada</button><div class="card"><table class="table"><tr><th>Fecha</th><th>Estado</th><th>Notas</th></tr>${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td><td>${esc(w.notes||'')}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
+}
+async function openWorkday(){
+ const d=new Date().toISOString().slice(0,10);try{const {data,error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open',...createdBy()}).select().single();if(error)throw error;toast('Jornada abierta');workdayPage()}catch(e){toast(e.message,true)}
+}
+async function correctionsPage(){
+ try{const rows=await q('correction_requests',db.from('correction_requests').select('*').order('created_at',{ascending:false}).limit(50));setHTML(`<div class="title">Correcciones</div>${canCorrect()?'<button class="btn" onclick="requestCorrection()">＋ Solicitar / registrar corrección</button>':''}<div class="card"><table class="table"><tr><th>Fecha</th><th>Entidad</th><th>Estado</th><th>Motivo</th></tr>${rows.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('es-PE')}</td><td>${esc(r.entity_type)}</td><td><span class="badge ${r.status==='approved'?'ok':r.status==='pending'?'warn':'bad'}">${esc(r.status)}</span></td><td>${esc(r.reason)}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
+}
+async function requestCorrection(){
+ const entity=prompt('Entidad: sale / expense / client / vehicle');if(!entity)return;const id=prompt('ID de la entidad');if(!id)return;const reason=prompt('Motivo obligatorio');if(!reason)return;
+ try{const {error}=await db.from('correction_requests').insert({entity_type:entity,entity_id:id,requested_by:HAL_USER.id,reason,requested_changes:{manual:true},status:'pending'});if(error)throw error;toast('Solicitud registrada');correctionsPage()}catch(e){toast(e.message,true)}
+}
+async function pricesPage(){
+ if(!isAdmin())return toast('Solo Administrador puede modificar precios.',true);
+ try{await loadCatalog();setHTML(`<div class="title">Precios</div><div class="date">Solo Administrador puede editar</div><div class="card">${prices.map(p=>{const s=services.find(x=>x.id===p.service_id),v=vehicleTypes.find(x=>x.id===p.vehicle_type_id);return `<div class="result"><div class="row"><span>${esc(s?.name||'')}</span><span>${esc(v?.name||'')}</span></div><input id="price_${p.id}" type="number" min="0" step="0.01" value="${p.price}"><button class="btn" onclick="savePrice('${p.id}')">Guardar</button></div>`}).join('')}</div>`)}catch(e){toast(e.message,true)}
+}
+async function savePrice(id){
+ if(!isAdmin())return toast('Solo Administrador.',true);const value=Number(document.getElementById('price_'+id)?.value);if(!(value>=0))return;
+ try{const {error}=await db.from('service_prices').update({price:value,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Precio actualizado')}catch(e){toast(e.message,true)}
 }
 
-/* =====================================================
-   LOGIN
-   ===================================================== */
-
-function showLogin() {
-  const old = document.getElementById('halLogin');
-  if (old) old.remove();
-
-  document.body.insertAdjacentHTML('afterbegin', `
-    <div id="halLogin"
-      style="position:fixed;inset:0;z-index:99999;background:#07111b;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
-
-      <div style="width:100%;max-width:390px;background:#0e1d2a;border:1px solid #263b4d;border-radius:22px;padding:28px;box-sizing:border-box">
-
-        <div style="text-align:center;font-size:30px;font-weight:800;margin-bottom:8px">
-          <span style="color:white">HAL</span>
-          <span style="color:#4d8dff"> GARAGE</span>
-        </div>
-
-        <div style="text-align:center;color:#8da2b5;margin-bottom:22px">
-          Sistema de gestión
-        </div>
-
-        <div style="color:#91a4b7;font-size:12px;margin-bottom:7px">SELECCIONA TU PERFIL</div>
-
-        <div style="display:grid;gap:9px">
-          <button type="button" class="btn" id="profile_admin" onclick="selectFixedProfile('admin')" style="margin-top:0">👑 Administrador<br><small>HAL GARAGE</small></button>
-          <button type="button" class="btn alt" id="profile_supervisor" onclick="selectFixedProfile('supervisor')" style="margin-top:0">🛠️ Supervisor<br><small>Hal Garage</small></button>
-          <button type="button" class="btn alt" id="profile_operario" onclick="selectFixedProfile('operario')" style="margin-top:0">🚗 Operario<br><small>hal garage</small></button>
-        </div>
-
-        <input id="halPassword"
-          type="password"
-          placeholder="Contraseña"
-          autocomplete="current-password"
-          onkeydown="if(event.key==='Enter') loginHAL()"
-          style="width:100%;box-sizing:border-box;padding:14px;margin:15px 0 10px;border-radius:12px;border:1px solid #31495c;background:#07111b;color:white">
-
-        <button type="button" onclick="loginHAL()"
-          style="width:100%;padding:14px;border:0;border-radius:12px;background:#2675ff;color:white;font-size:16px;font-weight:700">
-          INGRESAR
-        </button>
-
-        <div id="halLoginMsg"
-          style="min-height:24px;margin-top:15px;text-align:center;color:#ff7777"></div>
-
-      </div>
-    </div>
-  `);
-
-  selectFixedProfile(sessionStorage.getItem('HAL_FIXED_USER') || 'admin');
-}
-
-const FIXED_USERS = Object.freeze({
-  admin: {
-    role: 'admin',
-    name: 'HAL GARAGE',
-    password: 'hal.garage.2020'
-  },
-  supervisor: {
-    role: 'supervisor',
-    name: 'Hal Garage',
-    password: 'Halgarage2020'
-  },
-  operario: {
-    role: 'operator',
-    name: 'hal garage',
-    password: 'hal2020'
-  }
-});
-
-let selectedFixedProfile = 'admin';
-
-function selectFixedProfile(profileKey) {
-  if (!FIXED_USERS[profileKey]) return;
-  selectedFixedProfile = profileKey;
-
-  document.querySelectorAll('#halLogin [id^="profile_"]').forEach(btn => {
-    btn.style.background = '#152b3d';
-    btn.style.border = '1px solid #294157';
-  });
-
-  const active = document.getElementById('profile_' + profileKey);
-  if (active) {
-    active.style.background = '#117ff0';
-    active.style.border = '1px solid #42aaff';
-  }
-
-  const pass = document.getElementById('halPassword');
-  if (pass) {
-    pass.value = '';
-    pass.focus();
-  }
-
-  const msg = document.getElementById('halLoginMsg');
-  if (msg) {
-    msg.textContent = '';
-    msg.style.color = '#ff7777';
-  }
-}
-
-async function resolveFixedProfileId(user) {
-  try {
-    if (!dbReady()) return null;
-
-    const { data, error } = await halDb
-      .from('profiles')
-      .select('id,full_name,role,active')
-      .eq('active', true)
-      .limit(100);
-
-    if (error) {
-      console.warn('No se pudo resolver el perfil de Supabase:', error.message);
-      return null;
-    }
-
-    const normalize = v => String(v || '').trim().toLowerCase();
-    const roleKey = role => {
-      const r = normalize(role);
-      if (['admin','administrador','administrator'].includes(r)) return 'admin';
-      if (['operator','operador','operario'].includes(r)) return 'operator';
-      if (r === 'supervisor') return 'supervisor';
-      return r;
-    };
-
-    const rows = data || [];
-    const wantedName = normalize(user.name);
-    const wantedRole = roleKey(user.role);
-
-    const exact = rows.find(p => normalize(p.full_name) === wantedName);
-    const byRole = rows.find(p => roleKey(p.role) === wantedRole);
-
-    return exact?.id || byRole?.id || null;
-  } catch (e) {
-    console.warn('No se pudo resolver el ID del perfil:', e);
-    return null;
-  }
-}
-
-function createdByPayload() {
-  return HAL_USER?.id ? { created_by: HAL_USER.id } : {};
-}
-
-async function loginHAL() {
-  const password = document.getElementById('halPassword')?.value || '';
-  const msg = document.getElementById('halLoginMsg');
-  const selected = FIXED_USERS[selectedFixedProfile];
-
-  if (!selected) {
-    if (msg) msg.textContent = 'Selecciona un perfil.';
-    return;
-  }
-
-  if (!password) {
-    if (msg) msg.textContent = 'Escribe la contraseña.';
-    return;
-  }
-
-  // La comparación es intencionalmente sensible a mayúsculas/minúsculas.
-  if (password !== selected.password) {
-    if (msg) msg.textContent = 'Contraseña incorrecta.';
-    return;
-  }
-
-  if (msg) {
-    msg.style.color = '#74e77b';
-    msg.textContent = 'Ingresando...';
-  }
-
-  // Entramos de inmediato. La consulta a profiles es solo para recuperar
-  // el UUID que algunas operaciones de Supabase usan como created_by.
-  HAL_USER = {
-    id: null,
-    email: null,
-    name: selected.name,
-    role: selected.role
-  };
-
-  sessionStorage.setItem('HAL_FIXED_USER', selectedFixedProfile);
-
-  const login = document.getElementById('halLogin');
-  if (login) login.remove();
-
-  updateUserLabel();
-  go('dashboard');
-
-  resolveFixedProfileId(selected).then(id => {
-    if (HAL_USER && HAL_USER.role === selected.role) HAL_USER.id = id;
-  }).catch(() => {});
-}
-
-function updateUserLabel() {
-  const el = document.getElementById('userLabel');
-
-  if (el && HAL_USER) {
-    el.textContent = HAL_USER.name + ' · ' + HAL_USER.role;
-  }
-}
-
-function logoutHAL() {
-  HAL_USER = null;
-  sessionStorage.removeItem('HAL_FIXED_USER');
-  showLogin();
-}
-
-/* =====================================================
-   DASHBOARD
-   ===================================================== */
-
-async function dashboard() {
-  if (!requireUser()) return;
-
-  setHTML(`
-    <div class="title">
-      Dashboard
-    </div>
-
-    <div style="
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      gap:12px">
-
-      <div class="card">
-        <small>Ventas de hoy</small>
-        <h2 id="dashSales">S/ 0.00</h2>
-      </div>
-
-      <div class="card">
-        <small>Vehículos</small>
-        <h2 id="dashVehicles">0</h2>
-      </div>
-
-      <div class="card">
-        <small>Gastos de hoy</small>
-        <h2 id="dashExpenses">S/ 0.00</h2>
-      </div>
-
-      <div class="card">
-        <small>Resultado</small>
-        <h2 id="dashResult">S/ 0.00</h2>
-      </div>
-
-    </div>
-
-    <div class="card" style="margin-top:15px">
-      <h3>Accesos rápidos</h3>
-
-      <div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:10px">
-
-        <button onclick="go('clients')">
-          👤 Clientes
-        </button>
-
-        <button onclick="go('sale')">
-          ➕ Nueva venta
-        </button>
-
-        <button onclick="go('cash')">
-          💰 Caja
-        </button>
-
-        <button onclick="go('attendance')">
-          👷 Personal
-        </button>
-
-        <button onclick="go('more')">
-          ☰ Más
-        </button>
-
-      </div>
-    </div>
-  `);
-
-  try { await loadDashboardData(); }
-  catch (e) { console.error(e); toast('No se pudieron cargar los datos del inicio: '+e.message,'error'); }
-}
-
-async function loadDashboardData() {
-  if(!dbReady()) return;
-  if(!halDb) throw new Error('Supabase no está disponible.');
-
-  const today =
-    new Date().toISOString().slice(0,10);
-
-  const start = today + 'T00:00:00';
-  const end = today + 'T23:59:59';
-
-  const { data: sales } =
-    await halDb
-      .from('sales')
-      .select('total')
-      .gte('created_at', start)
-      .lte('created_at', end);
-
-  const { data: expenses } =
-    await halDb
-      .from('expenses')
-      .select('amount')
-      .gte('created_at', start)
-      .lte('created_at', end);
-
-  const { count: vehicles } =
-    await halDb
-      .from('vehicles')
-      .select('*', {
-        count:'exact',
-        head:true
-      })
-      .eq('active', true);
-
-  const totalSales =
-    (sales || []).reduce(
-      (a,b) => a + Number(b.total || 0), 0
-    );
-
-  const totalExpenses =
-    (expenses || []).reduce(
-      (a,b) => a + Number(b.amount || 0), 0
-    );
-
-  const result =
-    totalSales - totalExpenses;
-
-  const s = document.getElementById('dashSales');
-  const v = document.getElementById('dashVehicles');
-  const e = document.getElementById('dashExpenses');
-  const r = document.getElementById('dashResult');
-
-  if (s) s.textContent = money(totalSales);
-  if (v) v.textContent = vehicles || 0;
-  if (e) e.textContent = money(totalExpenses);
-  if (r) r.textContent = money(result);
-}
-
-/* =====================================================
-   CLIENTES
-   ===================================================== */
-
-async function clients() {
-  if (!requireUser()) return;
-
-  setHTML(`
-    <div class="title">Clientes</div>
-    <div class="date">Registra clientes y sus vehículos.</div>
-
-    <div class="card">
-      <div class="row">
-        <h3 style="margin:0">Buscar</h3>
-        <button class="smallbtn" onclick="toggleClientForm()">＋ Nuevo cliente</button>
-      </div>
-      <input id="clientSearch" placeholder="Buscar por nombre o teléfono..." oninput="filterClients()">
-    </div>
-
-    <div id="clientForm" class="card" style="display:none">
-      <h3 id="clientFormTitle">Nuevo cliente</h3>
-      <input id="clientName" placeholder="Nombre completo *">
-      <input id="clientPhone" inputmode="tel" placeholder="Teléfono">
-      <div class="row">
-        <button class="btn alt" onclick="cancelClientForm()">Cancelar</button>
-        <button class="btn green" onclick="saveClientForm()">Guardar cliente</button>
-      </div>
-    </div>
-
-    <div id="clientList"><div class="loading">Cargando clientes...</div></div>
-  `);
-
-  window.HAL_EDIT_CLIENT_ID = null;
-  await loadClients();
-}
-
-function toggleClientForm(editId=null) {
-  const f=document.getElementById('clientForm');
-  if(!f) return;
-  f.style.display='block';
-
-  if(editId) {
-    const c=(window.HAL_CLIENTS||[]).find(x=>x.id===editId);
-    if(!c) return;
-    window.HAL_EDIT_CLIENT_ID=editId;
-    document.getElementById('clientFormTitle').textContent='Editar cliente';
-    document.getElementById('clientName').value=c.full_name||'';
-    document.getElementById('clientPhone').value=c.phone||'';
-  } else {
-    window.HAL_EDIT_CLIENT_ID=null;
-    document.getElementById('clientFormTitle').textContent='Nuevo cliente';
-    document.getElementById('clientName').value='';
-    document.getElementById('clientPhone').value='';
-  }
-  document.getElementById('clientName')?.focus();
-}
-
-function cancelClientForm() {
-  const f=document.getElementById('clientForm');
-  if(f) f.style.display='none';
-  window.HAL_EDIT_CLIENT_ID=null;
-}
-
-async function saveClientForm() {
-  if(!dbReady()) return;
-  if(!requireUser()) return;
-  const name=(document.getElementById('clientName')?.value||'').trim();
-  const phone=(document.getElementById('clientPhone')?.value||'').trim()||null;
-  if(!name){toast('Ingresa el nombre del cliente','error');return;}
-
-  let error;
-  if(window.HAL_EDIT_CLIENT_ID) {
-    ({error}=await halDb.from('clients')
-      .update({full_name:name,phone})
-      .eq('id',window.HAL_EDIT_CLIENT_ID));
-  } else {
-    ({error}=await halDb.from('clients').insert({
-      full_name:name,phone,active:true,...createdByPayload()
-    }));
-  }
-
-  if(error){console.error(error);toast('No se pudo guardar: '+error.message,'error');return;}
-  toast(window.HAL_EDIT_CLIENT_ID?'Cliente actualizado':'Cliente registrado');
-  cancelClientForm();
-  await loadClients();
-}
-
-async function loadClients() {
-  if(!dbReady()) return;
-  const { data, error } = await halDb
-    .from('clients').select('*').eq('active', true).order('full_name');
-
-  if (error) {
-    console.error(error);
-    const box=document.getElementById('clientList');
-    if(box) box.innerHTML='<div class="errorbox"><b>No se pudieron cargar los clientes.</b><br>'+escapeHTML(error.message)+'</div>';
-    toast('Error cargando clientes: '+error.message, 'error');
-    return;
-  }
-
-  window.HAL_CLIENTS = data || [];
-  renderClients(window.HAL_CLIENTS);
-}
-
-function renderClients(list) {
-  const box=document.getElementById('clientList');
-  if(!box) return;
-
-  if(!list.length){
-    box.innerHTML='<div class="card">No hay clientes registrados.</div>';
-    return;
-  }
-
-  box.innerHTML=list.map(c=>`
-    <div class="card" style="margin-bottom:10px">
-      <div class="row">
-        <div style="min-width:0">
-          <strong>${escapeHTML(c.full_name)}</strong>
-          <div class="muted">${escapeHTML(c.phone||'Sin teléfono')}</div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="smallbtn" onclick="toggleClientForm('${c.id}')">Editar</button>
-          <button class="smallbtn" onclick="selectClient('${c.id}')">Ver</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function filterClients() {
-  const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
-  const list=(window.HAL_CLIENTS||[]).filter(c=>
-    String(c.full_name||'').toLowerCase().includes(q) ||
-    String(c.phone||'').includes(q)
-  );
-  renderClients(list);
-}
-
-async function selectClient(id) {
-  if(!dbReady()) return;
-  const { data, error }=await halDb.from('clients').select('*').eq('id',id).single();
-  if(error){toast('Error cargando cliente','error');return;}
-
-  selectedClient=data;
-
-  setHTML(`
-    <div class="title">Cliente</div>
-
-    <div class="card">
-      <div class="row">
-        <div>
-          <h2 style="margin:0">${escapeHTML(data.full_name)}</h2>
-          <p>📞 ${escapeHTML(data.phone||'Sin teléfono')}</p>
-        </div>
-        <button class="smallbtn" onclick="go('clients')">← Volver</button>
-      </div>
-      <button class="btn alt" onclick="editClientFromDetail('${data.id}')">✏️ Editar cliente</button>
-    </div>
-
-    <div class="card">
-      <h3>Registrar vehículo</h3>
-      <input id="vehiclePlate" placeholder="Placa *" style="text-transform:uppercase">
-      <input id="vehicleBrand" placeholder="Marca">
-      <input id="vehicleModel" placeholder="Modelo">
-      <select id="vehicleType"><option value="">Cargando tipos...</option></select>
-      <button class="btn green" onclick="saveVehicle('${data.id}')">🚗 Guardar vehículo</button>
-    </div>
-
-    <div id="clientVehicles"></div>
-  `);
-
-  await loadVehicleTypes();
-  await loadClientVehicles(data.id);
-}
-
-function editClientFromDetail(id){
-  go('clients');
-  setTimeout(()=>toggleClientForm(id),100);
-}
-
-async function loadVehicleTypes(){
-  if(!dbReady()) return;
-  const sel=document.getElementById('vehicleType');
-  if(!sel)return;
-
-  const {data,error}=await halDb.from('vehicle_types')
-    .select('id,name').order('name');
-
-  if(error){
-    sel.innerHTML='<option value="">No se pudieron cargar tipos</option>';
-    return;
-  }
-
-  sel.innerHTML='<option value="">Selecciona tipo de vehículo *</option>'+
-    (data||[]).map(v=>`<option value="${v.id}">${escapeHTML(v.name)}</option>`).join('');
-}
-
-async function saveVehicle(clientId){
-  if(!dbReady()) return;
-  const plate=(document.getElementById('vehiclePlate')?.value||'').trim().toUpperCase();
-  const brand=(document.getElementById('vehicleBrand')?.value||'').trim()||null;
-  const model=(document.getElementById('vehicleModel')?.value||'').trim()||null;
-  const vehicleType=document.getElementById('vehicleType')?.value||'';
-
-  if(!plate||!vehicleType){
-    toast('Placa y tipo de vehículo son obligatorios','error');
-    return;
-  }
-
-  const {error}=await halDb.from('vehicles').insert({
-    client_id:clientId,
-    plate,brand,model,
-    vehicle_type_id:vehicleType,
-    active:true,
-    ...createdByPayload()
-  });
-
-  if(error){
-    toast('No se pudo guardar el vehículo: '+error.message,'error');
-    return;
-  }
-
-  toast('Vehículo registrado');
-  document.getElementById('vehiclePlate').value='';
-  document.getElementById('vehicleBrand').value='';
-  document.getElementById('vehicleModel').value='';
-  await loadClientVehicles(clientId);
-}
-
-async function loadClientVehicles(clientId) {
-  if(!dbReady()) return;
-  const box=document.getElementById('clientVehicles');
-  if(!box)return;
-
-  const {data,error}=await halDb.from('vehicles')
-    .select('*,vehicle_types(name)')
-    .eq('client_id',clientId)
-    .eq('active',true)
-    .order('plate');
-
-  if(error){
-    box.innerHTML='<div class="errorbox">Error cargando vehículos: '+escapeHTML(error.message)+'</div>';
-    return;
-  }
-
-  box.innerHTML=`
-    <div class="card">
-      <h3>Vehículos registrados (${data?.length||0})</h3>
-      ${(data||[]).length
-        ? (data||[]).map(v=>`
-          <div class="result">
-            <div class="row">
-              <div>
-                <strong>🚗 ${escapeHTML(v.plate)}</strong>
-                <div class="muted">${escapeHTML([v.brand,v.model].filter(Boolean).join(' '))}</div>
-              </div>
-              <span class="badge">${escapeHTML(v.vehicle_types?.name||'Vehículo')}</span>
-            </div>
-          </div>`).join('')
-        : '<div class="muted">No tiene vehículos registrados.</div>'}
-    </div>`;
-}
-
-/* =====================================================
-   NAVEGACIÓN
-   ===================================================== */
-
-function go(page) {
-  if(page==='cash' && !canUseCash()){
-    toast('Caja está disponible para Administrador y Supervisor','error');
-    return;
-  }
-
-  document
-    .querySelectorAll('.nav button')
-    .forEach(b => b.classList.remove('active'));
-
-  const button =
-    document.querySelector(
-      `.nav button[data-page="${page}"]`
-    );
-
-  if (button) button.classList.add('active');
-
-  if (page === 'dashboard') dashboard();
-  else if (page === 'clients') clients();
-  else if (page === 'sale') sale();
-  else if (page === 'cash') cash();
-  else if (page === 'attendance') attendance();
-  else if (page === 'more') more();
-  else dashboard();
-}
-
-/* =====================================================
-   PANTALLAS TEMPORALES
-   Las convertiremos en módulos completos en el
-   siguiente bloque.
-   ===================================================== */
-
-async function sale() {
-  if (!requireUser()) return;
-
-  setHTML(`
-    <div class="title">Nueva atención</div>
-    <div class="date">Registra el servicio y el pago en un solo paso.</div>
-
-    <div class="card">
-      <h3>1. Cliente</h3>
-      <input id="saleClientSearch" placeholder="Buscar por nombre o teléfono" oninput="filterSaleClients()">
-      <div id="saleClientResults"></div>
-      <div id="saleSelectedClient"></div>
-    </div>
-
-    <div class="card" id="saleVehicleCard" style="display:none">
-      <h3>2. Vehículo</h3>
-      <div id="saleVehicleList">Cargando vehículos...</div>
-    </div>
-
-    <div class="card" id="saleServiceCard" style="display:none">
-      <h3>3. Servicio</h3>
-      <div id="saleServiceList">Cargando servicios...</div>
-      <div class="row" style="margin-top:14px"><strong>Total</strong><strong id="saleTotal">S/ 0.00</strong></div>
-    </div>
-
-    <div class="card" id="salePaymentCard" style="display:none">
-      <h3>4. Pago</h3>
-      <div class="pay">
-        <button id="pay_cash" onclick="selectSalePayment('cash')">💵 Efectivo</button>
-        <button id="pay_yape" onclick="selectSalePayment('yape')">📱 Yape</button>
-        <button id="pay_plin" onclick="selectSalePayment('plin')">📱 Plin</button>
-        <button id="pay_transfer" onclick="selectSalePayment('transfer')">🏦 Transferencia</button>
-      </div>
-      <button class="btn green" id="finishSaleBtn" onclick="finishSale()" disabled>✅ FINALIZAR ATENCIÓN</button>
-    </div>
-  `);
-
-  window.HAL_SALE = {client:null, vehicle:null, service:null, payment:null, services:[]};
-  await loadSaleClients();
-}
-
-async function loadSaleClients() {
-  if(!dbReady()) return;
-  const { data, error } = await halDb
-    .from('clients')
-    .select('id,full_name,phone')
-    .eq('active', true)
-    .order('full_name');
-  if (error) { console.error(error); toast('Error cargando clientes','error'); return; }
-  window.HAL_SALE_CLIENTS = data || [];
-  filterSaleClients();
-}
-
-function filterSaleClients() {
-  const q = (document.getElementById('saleClientSearch')?.value || '').toLowerCase().trim();
-  const list = (window.HAL_SALE_CLIENTS || []).filter(c =>
-    !q || c.full_name.toLowerCase().includes(q) || (c.phone || '').includes(q)
-  ).slice(0, 20);
-  const box = document.getElementById('saleClientResults');
-  if (!box) return;
-  box.innerHTML = list.length ? list.map(c => `
-    <div class="result" onclick="chooseSaleClient('${c.id}')" style="cursor:pointer">
-      <strong>${escapeHTML(c.full_name)}</strong><div style="opacity:.7">${escapeHTML(c.phone || 'Sin teléfono')}</div>
-    </div>`).join('') : '<div class="muted">No se encontraron clientes.</div>';
-}
-
-async function chooseSaleClient(id) {
-  const client = (window.HAL_SALE_CLIENTS || []).find(c => c.id === id);
-  if (!client) return;
-  window.HAL_SALE.client = client;
-  const results = document.getElementById('saleClientResults');
-  if (results) results.innerHTML = '';
-  const search = document.getElementById('saleClientSearch');
-  if (search) search.value = '';
-  document.getElementById('saleSelectedClient').innerHTML = `
-    <div class="result"><div class="row"><div><strong>👤 ${escapeHTML(client.full_name)}</strong><div>${escapeHTML(client.phone || 'Sin teléfono')}</div></div><button onclick="clearSaleClient()">Cambiar</button></div></div>`;
-  document.getElementById('saleVehicleCard').style.display = 'block';
-  await loadSaleVehicles(client.id);
-}
-
-function clearSaleClient() {
-  window.HAL_SALE = {client:null, vehicle:null, service:null, payment:null, services:[]};
-  const selected = document.getElementById('saleSelectedClient'); if (selected) selected.innerHTML = '';
-  document.getElementById('saleVehicleCard').style.display = 'none';
-  document.getElementById('saleServiceCard').style.display = 'none';
-  document.getElementById('salePaymentCard').style.display = 'none';
-  filterSaleClients();
-}
-
-async function loadSaleVehicles(clientId) {
-  if(!dbReady()) return;
-  const box = document.getElementById('saleVehicleList');
-  const { data, error } = await halDb
-    .from('vehicles')
-    .select('id,plate,brand,model,vehicle_type_id,vehicle_types(name)')
-    .eq('client_id', clientId)
-    .eq('active', true)
-    .order('plate');
-  if (error) { console.error(error); box.innerHTML='<div class="muted">Error cargando vehículos.</div>'; return; }
-  if (!data?.length) {
-    box.innerHTML = '<div class="muted">Este cliente no tiene vehículos registrados todavía.</div><button class="btn" onclick="go(\'clients\')">Ir a Clientes para registrar vehículo</button>';
-    return;
-  }
-  box.innerHTML = data.map(v => `
-    <div class="service" id="saleVehicle_${v.id}" onclick="chooseSaleVehicle('${v.id}')" style="cursor:pointer">
-      <div><strong>🚗 ${escapeHTML(v.plate)}</strong><div style="opacity:.7">${escapeHTML(v.brand || '')} ${escapeHTML(v.model || '')}</div></div>
-      <span class="badge">${escapeHTML(v.vehicle_types?.name || 'Vehículo')}</span>
-    </div>`).join('');
-  window.HAL_SALE_VEHICLES = data;
-}
-
-async function chooseSaleVehicle(id) {
-  const vehicle = (window.HAL_SALE_VEHICLES || []).find(v => v.id === id);
-  if (!vehicle) return;
-  window.HAL_SALE.vehicle = vehicle;
-  document.querySelectorAll('[id^="saleVehicle_"]').forEach(el => el.classList.remove('active'));
-  document.getElementById('saleVehicle_' + id)?.classList.add('active');
-  document.getElementById('saleServiceCard').style.display = 'block';
-  document.getElementById('salePaymentCard').style.display = 'block';
-  await loadSaleServices(vehicle.vehicle_type_id);
-  updateSaleReady();
-}
-
-async function loadSaleServices(vehicleTypeId) {
-  if(!dbReady()) return;
-  const box = document.getElementById('saleServiceList');
-  const { data, error } = await halDb
-    .from('service_prices')
-    .select('id,service_id,vehicle_type_id,price,services(id,name,description)')
-    .eq('vehicle_type_id', vehicleTypeId)
-    .eq('active', true);
-  if (error) { console.error(error); box.innerHTML='<div class="muted">Error cargando precios.</div>'; return; }
-  const services = (data || []).filter(x => x.services?.active !== false);
-  window.HAL_SALE.services = services;
-  if (!services.length) {
-    box.innerHTML = '<div class="card" style="margin-top:0">No hay precios configurados para este tipo de vehículo. Configura <b>service_prices</b> en Supabase antes de vender.</div>';
-    return;
-  }
-  box.innerHTML = services.map(x => `
-    <div class="service" id="saleService_${x.service_id}" onclick="chooseSaleService('${x.service_id}')" style="cursor:pointer">
-      <div><strong>${escapeHTML(x.services.name)}</strong><div style="opacity:.7">${escapeHTML(x.services.description || '')}</div></div>
-      <strong>${money(x.price)}</strong>
-    </div>`).join('');
-}
-
-function chooseSaleService(serviceId) {
-  const service = (window.HAL_SALE.services || []).find(x => x.service_id === serviceId);
-  if (!service) return;
-  window.HAL_SALE.service = service;
-  document.querySelectorAll('[id^="saleService_"]').forEach(el => el.classList.remove('active'));
-  document.getElementById('saleService_' + serviceId)?.classList.add('active');
-  const total = document.getElementById('saleTotal'); if (total) total.textContent = money(service.price);
-  updateSaleReady();
-}
-
-function selectSalePayment(method) {
-  window.HAL_SALE.payment = method;
-  document.querySelectorAll('[id^="pay_"]').forEach(el => el.classList.remove('active'));
-  document.getElementById('pay_' + method)?.classList.add('active');
-  updateSaleReady();
-}
-
-function updateSaleReady() {
-  const b = document.getElementById('finishSaleBtn');
-  if (b) b.disabled = !(window.HAL_SALE?.client && window.HAL_SALE?.vehicle && window.HAL_SALE?.service && window.HAL_SALE?.payment);
-}
-
-async function finishSale() {
-  if(!dbReady()) return;
-  const s = window.HAL_SALE;
-  if (!s?.client || !s.vehicle || !s.service || !s.payment || !HAL_USER) return;
-  const btn = document.getElementById('finishSaleBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-  const total = Number(s.service.price);
-  try {
-    const { data: sale, error: saleError } = await halDb.from('sales').insert({
-      client_id:s.client.id,
-      vehicle_id:s.vehicle.id,
-      total,
-      status:'confirmed',
-      ...createdByPayload()
-    }).select('id,sale_number').single();
-    if (saleError) throw saleError;
-
-    const { error: itemError } = await halDb.from('sale_items').insert({
-      sale_id:sale.id,
-      service_id:s.service.service_id,
-      vehicle_type_id:s.vehicle.vehicle_type_id,
-      service_name_snapshot:s.service.services.name,
-      price_applied:total,
-      quantity:1,
-      subtotal:total
-    });
-    if (itemError) throw itemError;
-
-    const { error: paymentError } = await halDb.from('payments').insert({
-      sale_id:sale.id,
-      method:s.payment,
-      amount:total,
-      ...createdByPayload()
-    });
-    if (paymentError) throw paymentError;
-
-    const { error: cashError } = await halDb.from('cash_movements').insert({
-      movement_type:'income',
-      payment_method:s.payment,
-      amount:total,
-      sale_id:sale.id,
-      ...createdByPayload()
-    });
-    if (cashError) throw cashError;
-
-    toast('Atención registrada correctamente');
-    setHTML(`<div class="title">✅ Atención registrada</div><div class="card"><h2>${money(total)}</h2><p>Venta N.º ${escapeHTML(sale.sale_number)}</p><p>Cliente: ${escapeHTML(s.client.full_name)}</p><p>Placa: ${escapeHTML(s.vehicle.plate)}</p><p>Servicio: ${escapeHTML(s.service.services.name)}</p><p>Pago: ${escapeHTML(s.payment)}</p><button class="btn green" onclick="go('sale')">➕ Nueva atención</button><button class="btn alt" onclick="go('dashboard')">🏠 Ir al inicio</button></div>`);
-  } catch (err) {
-    console.error(err);
-    toast('No se pudo registrar la atención. Revisa los permisos RLS.','error');
-    if (btn) { btn.disabled = false; btn.textContent = '✅ FINALIZAR ATENCIÓN'; }
-  }
-}
-
-async function cash() {
-  if (!requireUser()) return;
-  setHTML(`<div class="title">Caja</div><div class="date">Ingresos, egresos y saldo real</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="card"><small>Ingresos</small><h2 id="cashIncome">S/ 0.00</h2></div><div class="card"><small>Egresos</small><h2 id="cashExpense">S/ 0.00</h2></div></div>
-  <div class="card"><small>Saldo actual</small><h2 class="green" id="cashBalance">S/ 0.00</h2></div>
-  <button class="btn red" onclick="newExpense()">➖ Registrar egreso</button>
-  <div class="card"><h3>Últimos movimientos</h3><div id="cashList">Cargando...</div></div>`);
-  await loadCash();
-}
-async function loadCash(){
-  if(!dbReady()) return;
-  const box=document.getElementById('cashList');
-  const {data,error}=await halDb.from('cash_movements').select('id,movement_type,payment_method,amount,created_at').order('created_at',{ascending:false}).limit(100);
-  if(error){box.innerHTML='Error: '+escapeHTML(error.message);return;}
-  let income=0,expense=0;(data||[]).forEach(x=>x.movement_type==='income'?income+=Number(x.amount||0):expense+=Number(x.amount||0));
-  document.getElementById('cashIncome').textContent=money(income);document.getElementById('cashExpense').textContent=money(expense);document.getElementById('cashBalance').textContent=money(income-expense);
-  box.innerHTML=(data||[]).map(x=>`<div class="result"><div class="row"><strong>${x.movement_type==='income'?'🟢 Ingreso':'🔴 Egreso'}</strong><strong>${money(x.amount)}</strong></div><div class="muted">${escapeHTML(x.payment_method||'')} · ${new Date(x.created_at).toLocaleString('es-PE')}</div></div>`).join('')||'<div class="muted">Sin movimientos.</div>';
-}
-function newExpense(){const concept=prompt('Concepto del egreso:');if(!concept)return;const amount=Number(prompt('Monto en soles:'));if(!amount||amount<=0){toast('Monto inválido','error');return;}const method=(prompt('Forma de pago: cash / yape / plin / transfer','cash')||'cash').trim().toLowerCase();saveExpense(concept.trim(),amount,method)}
-async function saveExpense(concept,amount,method){
-  if(!dbReady()) return;
-  const {data,error}=await halDb.from('expenses').insert({concept,category:'General',amount,payment_method:method,...createdByPayload()}).select('id').single();
-  if(error){toast('No se pudo registrar el egreso: '+error.message,'error');return;}
-  const {error:ce}=await halDb.from('cash_movements').insert({movement_type:'expense',payment_method:method,amount,expense_id:data.id,...createdByPayload()});
-  if(ce){toast('Egreso guardado, pero caja devolvió error: '+ce.message,'error');return;}toast('Egreso registrado');await loadCash();
-}
-
-/* =====================================================
-   PERSONAL / ASISTENCIA
-   ===================================================== */
-function roleKey(role){
-  const r=String(role||'').trim().toLowerCase();
-  if(['admin','administrador','administrator'].includes(r)) return 'admin';
-  if(['operator','operador','operario'].includes(r)) return 'operator';
-  if(r==='supervisor') return 'supervisor';
-  return r;
-}
-function isAdmin(){return roleKey(HAL_USER?.role)==='admin'}
-function isSupervisor(){return roleKey(HAL_USER?.role)==='supervisor'}
-function isOperator(){return roleKey(HAL_USER?.role)==='operator'}
-function canManage(){return isAdmin()||isSupervisor()}
-function canUseCash(){return isAdmin()||isSupervisor()}
-function canSell(){return true}
-async function attendance(){
-  if (!requireUser()) return;
-  setHTML(`<div class="title">Personal</div><div class="date">Asistencia con foto y hora automática</div>
-  <div class="card"><h3>Mi jornada de hoy</h3><div id="myAttendance">Cargando...</div><div id="attendanceActions"></div></div>
-  ${isAdmin()?'<div class="card"><h3>Personal activo</h3><div id="staffList">Cargando...</div></div><div class="card"><h3>Marcaciones de hoy</h3><div id="staffAttendance">Cargando...</div></div>':''}`);
-  await renderMyAttendance();if(isAdmin())await renderStaffAttendance();
-}
-async function getTodayWorkday(userId){
-  if(!dbReady()) return;const {data,error}=await halDb.from('workdays').select('*').eq('operator_id',userId).eq('work_date',new Date().toISOString().slice(0,10)).order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)console.error(error);return data}
-async function getWorkdayEvents(id){
-  if(!dbReady()) return;const {data,error}=await halDb.from('workday_events').select('*').eq('workday_id',id).order('occurred_at');if(error)console.error(error);return data||[]}
-function nextEvent(events){const t=(events||[]).map(e=>e.event_type);if(!t.includes('open'))return'open';if(!t.includes('lunch'))return'lunch';if(!t.includes('return'))return'return';if(!t.includes('close'))return'close';return null}
-async function renderMyAttendance(){
-  if(!dbReady()) return;
-  const box=document.getElementById('myAttendance'),actions=document.getElementById('attendanceActions');if(!box)return;if(!HAL_USER.id){
-    box.innerHTML='<div class="errorbox">No se encontró el perfil del trabajador en Supabase. Cierra sesión y vuelve a ingresar; si continúa, revisa el registro en profiles.</div>';
-    actions.innerHTML='';
-    return;
-  }
-  const wd=await getTodayWorkday(HAL_USER.id);
-  if(!wd){box.innerHTML='<span class="badge warn">Sin entrada registrada</span>';actions.innerHTML='<button class="btn green" onclick="markAttendance(\'open\')">📸 MARCAR ENTRADA</button>';return;}
-  const ev=await getWorkdayEvents(wd.id),labels={open:'🟢 Entrada',lunch:'🍽️ Inicio refrigerio',return:'🔄 Fin refrigerio',close:'🔴 Salida'};
-  box.innerHTML=ev.map(e=>`<div class="result"><div class="row"><strong>${labels[e.event_type]||e.event_type}</strong><span>${new Date(e.occurred_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="muted">${e.photo_path?'📷 Foto registrada':'Sin foto'}</div></div>`).join('');
-  const n=nextEvent(ev),lab={lunch:'🍽️ INICIAR REFRIGERIO',return:'🔄 TERMINAR REFRIGERIO',close:'📸 MARCAR SALIDA'};actions.innerHTML=n?`<button class="btn ${n==='close'?'red':'green'}" onclick="markAttendance('${n}')">${lab[n]}</button>`:'<span class="badge ok">Jornada completa</span>';
-}
-async function takeAttendancePhoto(){return new Promise(resolve=>{const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='user';input.onchange=()=>{const file=input.files?.[0];if(!file){resolve(null);return;}const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=720,scale=Math.min(1,max/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);resolve(c.toDataURL('image/jpeg',.72))};img.src=url};input.click()})}
-async function markAttendance(type){
-  if(!dbReady()) return;
-  if(!requireUser())return;const photo=await takeAttendancePhoto();if(!photo){toast('La foto es obligatoria','error');return;}let wd=await getTodayWorkday(HAL_USER.id);
-  if(type==='open'&&!wd){const {data,error}=await halDb.from('workdays').insert({operator_id:HAL_USER.id,work_date:new Date().toISOString().slice(0,10),status:'open'}).select('id').single();if(error){toast('No se pudo abrir la jornada: '+error.message,'error');return;}wd=data;}
-  if(!wd){toast('No existe jornada para esta marcación','error');return;}
-  const {error}=await halDb.from('workday_events').insert({workday_id:wd.id,event_type:type,occurred_at:new Date().toISOString(),photo_path:photo,...createdByPayload()});
-  if(error){toast('No se pudo guardar: '+error.message,'error');return;}if(type==='close')await halDb.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',wd.id);
-  toast(type==='open'?'Entrada registrada':type==='close'?'Salida registrada':'Marcación registrada');await renderMyAttendance();
-}
-async function renderStaffAttendance(){
-  if(!dbReady()) return;
-  const staff=document.getElementById('staffList'),today=document.getElementById('staffAttendance');if(!staff)return;
-  const {data:profiles,error}=await halDb.from('profiles').select('id,full_name,role,active').eq('active',true).order('full_name');if(error){staff.innerHTML=escapeHTML(error.message);return;}
-  staff.innerHTML=(profiles||[]).map(p=>`<div class="result"><strong>👷 ${escapeHTML(p.full_name)}</strong><div class="muted">${escapeHTML(p.role||'')}</div></div>`).join('')||'<div class="muted">Sin personal activo.</div>';
-  const {data:wd,error:we}=await halDb.from('workdays').select('id,operator_id,status,created_at,closed_at,profiles(full_name)').eq('work_date',new Date().toISOString().slice(0,10)).order('created_at');if(we){today.innerHTML=escapeHTML(we.message);return;}
-  today.innerHTML=(wd||[]).map(w=>`<div class="result"><div class="row"><strong>${escapeHTML(w.profiles?.full_name||'Personal')}</strong><span class="badge ${w.status==='closed'?'ok':'warn'}">${escapeHTML(w.status)}</span></div><div class="muted">Inicio: ${new Date(w.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}${w.closed_at?' · Salida: '+new Date(w.closed_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}):''}</div></div>`).join('')||'<div class="muted">Nadie ha marcado hoy.</div>';
-}
-
-function more(){
-  if(!requireUser())return;
-  setHTML(`<div class="title">Más</div>
-    <div class="card">
-      <div class="result">
-        <strong>👤 ${escapeHTML(HAL_USER.name)}</strong>
-        <div class="muted">Perfil: ${escapeHTML(HAL_USER.role)}</div>
-      </div>
-      <button class="btn" onclick="go('dashboard')">🏠 Inicio</button>
-      <button class="btn alt" onclick="go('attendance')">👷 Personal / Asistencia</button>
-      ${canUseCash()?'<button class="btn alt" onclick="go(\'cash\')">💰 Caja</button>':''}
-      <button class="btn red" onclick="logoutHAL()">🚪 Cerrar sesión</button>
-    </div>`)
-}
-
-/* =====================================================
-   SEGURIDAD
-   ===================================================== */
-
-function escapeHTML(value) {
-
-  return String(value ?? '')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
-}
-
-/* =====================================================
-   INICIO
-   ===================================================== */
-
-function iniciarHAL() {
-  const saved = sessionStorage.getItem('HAL_FIXED_USER');
-
-  if (saved && FIXED_USERS[saved]) {
-    const user = FIXED_USERS[saved];
-
-    HAL_USER = {
-      id: null,
-      email: null,
-      name: user.name,
-      role: user.role
-    };
-
-    // Recuperamos el UUID del perfil si existe en la tabla profiles.
-    resolveFixedProfileId(user).then(id => {
-      if (HAL_USER && HAL_USER.role === user.role) {
-        HAL_USER.id = id;
-      }
-    });
-
-    updateUserLabel();
-    go('dashboard');
-  } else {
-    showLogin();
-  }
-}
-
-iniciarHAL();
+boot();
 </script>
-</body></html>
+</body>
+</html>
