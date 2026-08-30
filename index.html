@@ -66,7 +66,7 @@ function isAdmin(){return role()==='admin'}
 function canOperate(){return ['admin','supervisor','operator'].includes(role())}
 function requireLogin(){if(HAL_USER)return true;showLogin();return false}
 function createdBy(){return HAL_USER?.id?{created_by:HAL_USER.id}:{}}
-function canManagePrices(){return isAdmin()}
+function canManagePrices(){return isAdmin()||role()==='supervisor'}
 function canCorrect(){return isAdmin()||role()==='supervisor'}
 function fmtDate(d=new Date()){return new Intl.DateTimeFormat('es-PE',{dateStyle:'medium'}).format(d)}
 function activeNav(){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page))}
@@ -155,9 +155,22 @@ function renderClientResults(){
   const vs=vehicles.filter(v=>v.client_id===c.id);
   return `<div class="card"><div class="row"><b>${esc(c.full_name)}</b><span class="badge">${vs.length} vehículo(s)</span></div><div class="muted">${esc(c.phone||'Sin teléfono')}</div>
   ${vs.map(v=>`<div class="result row"><span>🚗 ${esc(v.plate)} · ${esc(v.brand||'')} ${esc(v.model||'')}</span><button class="smallbtn" onclick="startSale('${c.id}','${v.id}')">Vender</button></div>`).join('')}
-  <button class="btn alt" onclick="addVehicle('${c.id}')">＋ Agregar vehículo</button></div>`
+  <button class="btn alt" onclick="addVehicle('${c.id}')">＋ Agregar vehículo</button><button class="btn alt" onclick="clientHistory('${c.id}')">📋 Historial de servicios</button></div>`
  }).join('')||'<div class="card muted">No se encontraron clientes.</div>';
 }
+async function clientHistory(clientId){
+ const c=clients.find(x=>x.id===clientId);if(!c)return;
+ try{
+  const sales=await q('sales',db.from('sales').select('id,sale_number,total,status,created_at,vehicle_id').eq('client_id',clientId).order('created_at',{ascending:false}));
+  const items=sales.length?await q('sale_items',db.from('sale_items').select('sale_id,service_name_snapshot,price_applied,quantity,subtotal').in('sale_id',sales.map(x=>x.id))):[];
+  const total=sales.reduce((a,x)=>a+Number(x.total||0),0);
+  setHTML(`<div class="title">Historial del cliente</div><div class="date">${esc(c.full_name)} · ${sales.length} visita(s) · ${money(total)} acumulado</div>
+  <button class="btn alt" onclick="clientsPage()">← Volver a clientes</button>
+  <div class="card"><div class="grid"><div><div class="muted">Visitas</div><div class="metric">${sales.length}</div></div><div><div class="muted">Total gastado</div><div class="metric green">${money(total)}</div></div></div></div>
+  ${sales.map(x=>{const v=vehicles.find(v=>v.id===x.vehicle_id),its=items.filter(i=>i.sale_id===x.id);return `<div class="card"><div class="row"><b>Venta #${esc(x.sale_number)}</b><span class="badge">${new Date(x.created_at).toLocaleDateString('es-PE')}</span></div><div class="muted">${v?esc(v.plate):'Vehículo'} · ${esc(x.status)}</div>${its.map(i=>`<div class="result row"><span>${esc(i.service_name_snapshot)} × ${i.quantity}</span><b>${money(i.subtotal)}</b></div>`).join('')}<div class="row" style="margin-top:8px"><span>Total</span><b>${money(x.total)}</b></div></div>`}).join('')||'<div class="card muted">Este cliente todavía no tiene servicios registrados.</div>'}`);
+ }catch(e){setHTML(`<div class="title">Historial</div><div class="errorbox">${esc(e.message)}</div>`)}
+}
+
 async function newClient(){
  const name=prompt('Nombre completo del cliente');if(!name?.trim())return;
  const phone=prompt('Teléfono (opcional)')||null;
@@ -220,7 +233,7 @@ async function uploadEvidence(saleId,type,file){
  const path=`sales/${saleId}/${type}-${Date.now()}.${ext}`;
  const {error}=await db.storage.from(EVIDENCE_BUCKET).upload(path,file,{contentType:file.type,upsert:false});
  if(error)throw error;
- const {error:e2}=await db.from('sale_evidence').insert({sale_id:saleId,evidence_type:type,storage_path:path,...createdBy()});
+ const {error:e2}=await db.from('sale_evidence').insert({sale_id:saleId,evidence_type:type,storage_path:path,uploaded_by:HAL_USER.id});
  if(e2)throw e2;
  return path;
 }
@@ -243,15 +256,20 @@ async function finishSale(){
 
 async function cashPage(){
  try{
-  const start=new Date();start.setHours(0,0,0,0);const end=new Date(start);end.setDate(end.getDate()+1);
-  const [mov,exp]=await Promise.all([
-   q('cash_movements',db.from('cash_movements').select('*').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).order('created_at',{ascending:false})),
-   q('expenses',db.from('expenses').select('*').gte('created_at',start.toISOString()).lt('created_at',end.toISOString()).order('created_at',{ascending:false}))
-  ]);
+  const global=!(['operator'].includes(role()));
+  const start=global?null:new Date(); if(start)start.setHours(0,0,0,0);
+  const end=global?null:new Date(start); if(end)end.setDate(end.getDate()+1);
+  let mq=db.from('cash_movements').select('*').order('created_at',{ascending:false});
+  let eq=db.from('expenses').select('*').order('created_at',{ascending:false});
+  if(!global){mq=mq.gte('created_at',start.toISOString()).lt('created_at',end.toISOString());eq=eq.gte('created_at',start.toISOString()).lt('created_at',end.toISOString())}
+  const [mov,exp]=await Promise.all([q('cash_movements',mq.limit(500)),q('expenses',eq.limit(500))]);
   const income=mov.filter(x=>x.movement_type==='income').reduce((a,x)=>a+Number(x.amount),0),expense=exp.reduce((a,x)=>a+Number(x.amount),0);
-  setHTML(`<div class="title">Caja</div><div class="date">${fmtDate()}</div><div class="grid"><div class="card"><div class="muted">Ingresos</div><div class="metric green">${money(income)}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(expense)}</div></div></div>
+  setHTML(`<div class="title">Caja</div><div class="date">${global?'Caja global · Administrador/Supervisor':'Solo ingresos y movimientos de hoy · Operario'}</div>
+  <div class="grid"><div class="card"><div class="muted">${global?'Ingresos globales':'Ingresos de hoy'}</div><div class="metric green">${money(income)}</div></div>
+  <div class="card"><div class="muted">${global?'Gastos globales':'Gastos de hoy'}</div><div class="metric red">${money(expense)}</div></div></div>
   ${isAdmin()||role()==='supervisor'?'<button class="btn" onclick="newExpense()">＋ Registrar gasto</button>':''}
-  <div class="card"><b>Movimientos</b><table class="table"><tr><th>Hora</th><th>Tipo</th><th>Monto</th><th>Método</th></tr>${mov.map(x=>`<tr><td>${new Date(x.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}</td><td>${x.movement_type==='income'?'Ingreso':'Salida'}</td><td>${money(x.amount)}</td><td>${esc(x.payment_method)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Sin movimientos.</td></tr>'}</table></div>`);
+  <div class="card"><b>Movimientos ${global?'globales':'del día'}</b><table class="table"><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Método</th></tr>
+  ${mov.map(x=>`<tr><td>${new Date(x.created_at).toLocaleString('es-PE')}</td><td>${x.movement_type==='income'?'Ingreso':'Salida'}</td><td>${money(x.amount)}</td><td>${esc(x.payment_method||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Sin movimientos.</td></tr>'}</table></div>`);
  }catch(e){setHTML(`<div class="title">Caja</div><div class="errorbox">${esc(e.message)}</div>`)}
 }
 async function newExpense(){
@@ -267,25 +285,85 @@ async function newExpense(){
 
 async function morePage(){
  setHTML(`<div class="title">Más</div><div class="date">Herramientas y control</div>
- <div class="card"><button class="btn" onclick="inventoryPage()">📦 Inventario</button><button class="btn alt" onclick="workdayPage()">🕘 Jornada</button><button class="btn alt" onclick="correctionsPage()">✏️ Correcciones</button>${isAdmin()?'<button class="btn alt" onclick="pricesPage()">💲 Precios</button>':''}<button class="btn red" onclick="logout()">Cerrar sesión</button></div>
+ <div class="card"><button class="btn" onclick="inventoryPage()">📦 Inventario / Productos</button><button class="btn alt" onclick="workdayPage()">🕘 Jornada</button><button class="btn alt" onclick="correctionsPage()">✏️ Correcciones</button>${canManagePrices()?'<button class="btn alt" onclick="pricesPage()">💲 Precios</button>':''}<button class="btn red" onclick="logout()">Cerrar sesión</button></div>
  <div class="card"><b>Perfil</b><div class="muted" style="margin-top:6px">${esc(HAL_USER.name)} · ${roleLabel(role())}</div></div>`)
 }
 async function inventoryPage(){
- try{const ps=await q('products',db.from('products').select('*').eq('active',true).order('name'));setHTML(`<div class="title">Inventario</div><button class="btn" onclick="inventoryMove()">＋ Movimiento</button><div class="card"><table class="table"><tr><th>Producto</th><th>Stock</th><th>Mín.</th></tr>${ps.map(p=>`<tr><td>${esc(p.name)}</td><td class="${Number(p.stock)<=Number(p.minimum_stock)?'orange':''}">${esc(p.stock)} ${esc(p.unit_name)}</td><td>${esc(p.minimum_stock)}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
+ try{
+  const ps=await q('products',db.from('products').select('*').eq('active',true).order('name'));
+  setHTML(`<div class="title">Inventario</div><div class="date">Stock, ingresos y salidas</div>
+  ${isAdmin()||role()==='supervisor'?'<button class="btn" onclick="newProduct()">＋ Ingresar producto al inventario</button>':''}
+  <button class="btn alt" onclick="inventoryMove()">↕ Registrar entrada / salida</button>
+  <div class="card"><table class="table"><tr><th>Producto</th><th>Stock</th><th>Mín.</th><th>Acción</th></tr>
+  ${ps.map(p=>`<tr><td><b>${esc(p.name)}</b><br><span class="muted">${esc(p.unit_name)}</span></td>
+  <td class="${Number(p.stock)<=Number(p.minimum_stock)?'orange':''}">${esc(p.stock)}</td><td>${esc(p.minimum_stock)}</td>
+  <td><button class="smallbtn" onclick="inventoryMove('${p.id}')">Movimiento</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">No hay productos registrados.</td></tr>'}</table></div>
+  <div class="card"><b>Permisos</b><div class="muted" style="margin-top:6px">Administrador y Supervisor pueden crear productos. Los tres perfiles pueden registrar salidas/consumo; las entradas de productos quedan para Administrador y Supervisor.</div></div>`);
+ }catch(e){setHTML(`<div class="title">Inventario</div><div class="errorbox">${esc(e.message)}<br><span class="small">Si la tabla de categorías no existe, puedes omitirla; los productos no dependen de ella.</span></div>`)}
 }
-async function inventoryMove(){
- const name=prompt('Nombre exacto del producto');if(!name)return;const ps=await q('products',db.from('products').select('*').ilike('name',name).limit(5));const p=ps[0];if(!p)return toast('Producto no encontrado',true);
- const type=prompt('Tipo: entry / exit / adjustment');const qty=Number(prompt('Cantidad'));if(!type||!(qty>0))return;
- try{const {error}=await db.from('inventory_movements').insert({product_id:p.id,movement_type:type,quantity:qty,reason:'Movimiento manual',...createdBy()});if(error)throw error;
-  let stock=Number(p.stock);if(type==='entry')stock+=qty;else if(type==='exit')stock-=qty;else stock=qty;if(stock<0)throw new Error('Stock insuficiente');
-  const {error:e}=await db.from('products').update({stock,updated_at:new Date().toISOString()}).eq('id',p.id);if(e)throw e;toast('Inventario actualizado');inventoryPage()
+async function newProduct(){
+ if(!(isAdmin()||role()==='supervisor'))return toast('Solo Administrador o Supervisor puede ingresar productos.',true);
+ const name=prompt('Nombre del producto');if(!name?.trim())return;
+ const unit=prompt('Unidad: unidad, litro, ml, kg, etc.','unidad')||'unidad';
+ const stock=Number(prompt('Stock inicial','0'));if(!(stock>=0))return;
+ const minimum=Number(prompt('Stock mínimo','0'));if(!(minimum>=0))return;
+ try{
+  const {error}=await db.from('products').insert({name:name.trim(),unit_name:unit.trim(),stock,minimum_stock:minimum});
+  if(error)throw error;
+  if(stock>0){
+   const ps=await q('products',db.from('products').select('id').eq('name',name.trim()).limit(1));
+   if(ps[0])await db.from('inventory_movements').insert({product_id:ps[0].id,movement_type:'entry',quantity:stock,reason:'Stock inicial',...createdBy()});
+  }
+  toast('Producto ingresado al inventario');inventoryPage();
+ }catch(e){toast(e.message,true)}
+}
+async function inventoryMove(productId=null){
+ const ps=await q('products',db.from('products').select('*').eq('active',true).order('name'));
+ if(!ps.length)return toast('Primero ingresa un producto al inventario.',true);
+ let p=productId?ps.find(x=>x.id===productId):null;
+ if(!p){
+  const name=prompt('Nombre exacto del producto');if(!name)return;
+  p=ps.find(x=>x.name.trim().toLowerCase()===name.trim().toLowerCase());
+ }
+ if(!p)return toast('Producto no encontrado.',true);
+ const type=prompt('Tipo: entry = ingreso de producto / exit = consumo o salida / adjustment = ajuste');
+ if(!['entry','exit','adjustment'].includes(type))return toast('Tipo de movimiento inválido.',true);
+ if(type==='entry' && !(isAdmin()||role()==='supervisor'))return toast('Solo Administrador o Supervisor puede ingresar productos.',true);
+ const qty=Number(prompt('Cantidad'));if(!(qty>0))return;
+ const reason=prompt('Motivo',type==='entry'?'Compra / reposición':'Consumo de servicio')||'Movimiento manual';
+ try{
+  let stock=Number(p.stock);
+  if(type==='entry')stock+=qty;
+  else if(type==='exit'){if(stock<qty)throw new Error('Stock insuficiente.');stock-=qty}
+  else stock=qty;
+  const {error}=await db.from('inventory_movements').insert({product_id:p.id,movement_type:type,quantity:qty,reason,...createdBy()});if(error)throw error;
+  const {error:e}=await db.from('products').update({stock,updated_at:new Date().toISOString()}).eq('id',p.id);if(e)throw e;
+  toast('Movimiento de inventario guardado');inventoryPage();
  }catch(e){toast(e.message,true)}
 }
 async function workdayPage(){
- try{const rows=await q('workdays',db.from('workdays').select('*').order('work_date',{ascending:false}).limit(30));setHTML(`<div class="title">Jornada</div><button class="btn" onclick="openWorkday()">＋ Abrir jornada</button><div class="card"><table class="table"><tr><th>Fecha</th><th>Estado</th><th>Notas</th></tr>${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td><td>${esc(w.notes||'')}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
+ try{
+  const rows=await q('workdays',db.from('workdays').select('*').order('work_date',{ascending:false}).limit(30));
+  const today=new Date().toISOString().slice(0,10);
+  const mine=rows.find(w=>w.operator_id===HAL_USER.id&&w.work_date===today&&w.status==='open');
+  setHTML(`<div class="title">Jornada</div><div class="date">${fmtDate()}</div>
+  ${mine?`<div class="card"><b>Jornada abierta</b><div class="muted" style="margin-top:6px">La jornada de hoy está activa.</div><button class="btn red" onclick="closeWorkday('${mine.id}')">Cerrar jornada</button></div>`
+  :`<div class="card"><b>Jornada de hoy</b><div class="muted" style="margin-top:6px">Debes abrir la jornada antes de comenzar a operar.</div><button class="btn" onclick="openWorkday()">＋ Abrir jornada</button></div>`}
+  <div class="card"><b>Historial de jornadas</b><table class="table"><tr><th>Fecha</th><th>Estado</th><th>Cierre</th></tr>
+  ${rows.map(w=>`<tr><td>${esc(w.work_date)}</td><td><span class="badge ${w.status==='open'?'ok':'warn'}">${esc(w.status)}</span></td><td>${w.closed_at?new Date(w.closed_at).toLocaleString('es-PE'):'—'}</td></tr>`).join('')||'<tr><td colspan="3" class="muted">Sin jornadas.</td></tr>'}</table></div>`);
+ }catch(e){setHTML(`<div class="title">Jornada</div><div class="errorbox">${esc(e.message)}</div>`)}
 }
 async function openWorkday(){
- const d=new Date().toISOString().slice(0,10);try{const {data,error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open',...createdBy()}).select().single();if(error)throw error;toast('Jornada abierta');workdayPage()}catch(e){toast(e.message,true)}
+ const d=new Date().toISOString().slice(0,10);
+ try{
+  const existing=await q('workdays',db.from('workdays').select('id,status').eq('operator_id',HAL_USER.id).eq('work_date',d).limit(10));
+  if(existing.some(x=>x.status==='open'))return toast('Ya tienes una jornada abierta.',true);
+  const {error}=await db.from('workdays').insert({operator_id:HAL_USER.id,work_date:d,status:'open'});if(error)throw error;
+  toast('Jornada abierta');workdayPage()
+ }catch(e){toast(e.message,true)}
+}
+async function closeWorkday(id){
+ try{const {error}=await db.from('workdays').update({status:'closed',closed_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Jornada cerrada');workdayPage()}catch(e){toast(e.message,true)}
 }
 async function correctionsPage(){
  try{const rows=await q('correction_requests',db.from('correction_requests').select('*').order('created_at',{ascending:false}).limit(50));setHTML(`<div class="title">Correcciones</div>${canCorrect()?'<button class="btn" onclick="requestCorrection()">＋ Solicitar / registrar corrección</button>':''}<div class="card"><table class="table"><tr><th>Fecha</th><th>Entidad</th><th>Estado</th><th>Motivo</th></tr>${rows.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('es-PE')}</td><td>${esc(r.entity_type)}</td><td><span class="badge ${r.status==='approved'?'ok':r.status==='pending'?'warn':'bad'}">${esc(r.status)}</span></td><td>${esc(r.reason)}</td></tr>`).join('')}</table></div>`)}catch(e){toast(e.message,true)}
@@ -295,11 +373,11 @@ async function requestCorrection(){
  try{const {error}=await db.from('correction_requests').insert({entity_type:entity,entity_id:id,requested_by:HAL_USER.id,reason,requested_changes:{manual:true},status:'pending'});if(error)throw error;toast('Solicitud registrada');correctionsPage()}catch(e){toast(e.message,true)}
 }
 async function pricesPage(){
- if(!isAdmin())return toast('Solo Administrador puede modificar precios.',true);
+ if(!canManagePrices())return toast('Solo Administrador o Supervisor puede modificar precios.',true);
  try{await loadCatalog();setHTML(`<div class="title">Precios</div><div class="date">Solo Administrador puede editar</div><div class="card">${prices.map(p=>{const s=services.find(x=>x.id===p.service_id),v=vehicleTypes.find(x=>x.id===p.vehicle_type_id);return `<div class="result"><div class="row"><span>${esc(s?.name||'')}</span><span>${esc(v?.name||'')}</span></div><input id="price_${p.id}" type="number" min="0" step="0.01" value="${p.price}"><button class="btn" onclick="savePrice('${p.id}')">Guardar</button></div>`}).join('')}</div>`)}catch(e){toast(e.message,true)}
 }
 async function savePrice(id){
- if(!isAdmin())return toast('Solo Administrador.',true);const value=Number(document.getElementById('price_'+id)?.value);if(!(value>=0))return;
+ if(!canManagePrices())return toast('Solo Administrador o Supervisor.',true);const value=Number(document.getElementById('price_'+id)?.value);if(!(value>=0))return;
  try{const {error}=await db.from('service_prices').update({price:value,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;toast('Precio actualizado')}catch(e){toast(e.message,true)}
 }
 
