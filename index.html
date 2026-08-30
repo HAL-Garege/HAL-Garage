@@ -456,6 +456,12 @@ async function savePrice(id){
 }
 
 boot();
+ if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(error => console.error('HAL Garage SW:', error));
+  });
+}
 </script>
 </body>
 </html>
