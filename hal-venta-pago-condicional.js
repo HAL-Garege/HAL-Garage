@@ -4,6 +4,45 @@
   const paymentPhoto = () => document.getElementById('paymentPhoto');
   const platePhoto = () => document.getElementById('platePhoto');
 
+  function ensurePlateEvidenceUI() {
+    if (document.getElementById('halPlateEvidenceBlock')) return;
+    const app = document.getElementById('app');
+    if (!app) return;
+
+    const confirm = [...app.querySelectorAll('button')].find(b => /CONFIRMAR VENTA/i.test(b.textContent || ''));
+    if (!confirm) return;
+
+    const block = document.createElement('div');
+    block.id = 'halPlateEvidenceBlock';
+    block.className = 'card';
+    block.innerHTML = `
+      <div style="font-weight:800;font-size:16px">📸 Entrega / pago</div>
+      <div class="muted" style="margin:4px 0 8px">Al terminar el servicio se toma la foto de la placa.</div>
+      <label>Foto de placa al entregar (obligatoria)</label>
+      <input id="platePhoto" type="file" accept="image/*" capture="environment" class="hidden">
+      <button type="button" class="btn alt" id="halTakePlatePhoto">📷 TOMAR FOTO DE PLACA</button>
+      <div id="halPlatePhotoStatus" class="muted" style="margin-top:7px">Sin foto seleccionada</div>
+      <img id="halPlatePreview" class="photo-preview hidden" alt="Foto de placa">
+    `;
+
+    confirm.parentElement.insertBefore(block, confirm);
+
+    const input = document.getElementById('platePhoto');
+    const button = document.getElementById('halTakePlatePhoto');
+    const status = document.getElementById('halPlatePhotoStatus');
+    const preview = document.getElementById('halPlatePreview');
+
+    button.onclick = () => input.click();
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      status.textContent = '✅ Foto seleccionada: ' + file.name;
+      status.className = 'success';
+      preview.src = URL.createObjectURL(file);
+      preview.classList.remove('hidden');
+    };
+  }
+
   function currentMethod() {
     try {
       if (typeof salePayment !== 'undefined') return salePayment === 'cash' ? 'cash' : 'digital';
@@ -32,6 +71,7 @@
   }
 
   function sync() {
+    ensurePlateEvidenceUI();
     const input = paymentPhoto();
     if (!input) return;
     const block = paymentBlock();
@@ -48,6 +88,9 @@
       block.classList.remove('hidden');
       block.style.display = '';
     }
+
+    const plate = platePhoto();
+    if (plate) plate.required = true;
   }
 
   function scheduleSync() {
@@ -71,6 +114,7 @@
     if (!selectedClient || !selectedVehicle) return toast('Selecciona cliente y vehículo.', true);
     if (!saleItems.length) return toast('Agrega al menos un servicio.', true);
 
+    ensurePlateEvidenceUI();
     const plate = platePhoto()?.files?.[0];
     const payment = paymentPhoto()?.files?.[0];
     let method = 'cash';
