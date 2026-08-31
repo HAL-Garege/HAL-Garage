@@ -1,12 +1,12 @@
-const CACHE = 'hal-garage-v4';
-const ENHANCEMENTS = './hal-enhancements.js?v=2';
+const CACHE = 'hal-garage-v5';
+const ENHANCEMENTS = './hal-enhancements.js?v=3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './hal-enhancements.js?v=2'
+  './hal-enhancements.js?v=3'
 ];
 
 self.addEventListener('install', event => {
