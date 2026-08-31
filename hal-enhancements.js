@@ -60,8 +60,7 @@
         const next=Number(change); if(!(next>=0)) throw new Error('Stock inválido.');
         if(next!==current){
           const qty=Math.abs(next-current);
-          const movementType=next>current?'adjustment':'adjustment';
-          const {error:me}=await db.from('inventory_movements').insert({product_id:productId,movement_type:movementType,quantity:qty,reason:`Edición de inventario: ${current} → ${next}`,...createdBy()});
+          const {error:me}=await db.from('inventory_movements').insert({product_id:productId,movement_type:'adjustment',quantity:qty,reason:`Edición de inventario: ${current} → ${next}`,...createdBy()});
           if(me) throw me;
           const {error:se}=await db.from('products').update({stock:next,updated_at:new Date().toISOString()}).eq('id',productId);
           if(se) throw se;
@@ -87,6 +86,8 @@
   function enhanceRegisterLabels(){
     document.querySelectorAll('#app button').forEach(b=>{
       if(b.textContent.includes('Nuevo cliente')) b.textContent=b.textContent.replace('Nuevo cliente','Registrar cliente');
+      if(b.textContent.includes('CONFIRMAR VENTA')) b.textContent=b.textContent.replace('CONFIRMAR VENTA','REGISTRAR VENTA');
+      if(b.textContent.includes('Ingresar producto al inventario')) b.textContent=b.textContent.replace('Ingresar producto al inventario','Registrar producto');
     });
   }
 
