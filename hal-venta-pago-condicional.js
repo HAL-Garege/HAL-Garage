@@ -5,73 +5,67 @@
   const platePhoto = () => document.getElementById('platePhoto');
 
   function currentMethod() {
-    // Primero usa el estado real de la venta.
     try {
       if (typeof salePayment !== 'undefined') return salePayment === 'cash' ? 'cash' : 'digital';
     } catch (_) {}
-
-    // Respaldo para interfaces que marcan el botón activo.
-    const buttons = [...document.querySelectorAll('#app button')];
-    const active = buttons.find(b => b.classList.contains('active') && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || ''));
+    const active = [...document.querySelectorAll('#app button')].find(b =>
+      b.classList.contains('active') && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')
+    );
     if (active) return /Efectivo/i.test(active.textContent || '') ? 'cash' : 'digital';
     return 'cash';
   }
 
-  function paymentSection() {
+  function paymentBlock() {
     const input = paymentPhoto();
     if (!input) return null;
-
-    // Busca el bloque que contiene específicamente el texto del comprobante.
-    let el = input;
-    while (el && el !== document.body) {
-      const text = (el.textContent || '').trim();
-      if (/Comprobante de pago/i.test(text) && !/Foto de placa al entregar/i.test(text)) return el;
-      el = el.parentElement;
+    const labels = [...document.querySelectorAll('#app label')];
+    const label = labels.find(x => /^Comprobante de pago/i.test((x.textContent || '').trim()));
+    if (label) {
+      let el = label.parentElement;
+      for (let i = 0; i < 4 && el; i++, el = el.parentElement) {
+        const text = el.textContent || '';
+        if (/Comprobante de pago/i.test(text) && /Tomar foto del comprobante/i.test(text)) return el;
+      }
+      return label.parentElement || label;
     }
-
-    // Respaldo: etiqueta del input y su contenedor inmediato.
-    const label = input.closest('label');
-    return label?.parentElement || label || input.parentElement;
+    return input.parentElement;
   }
 
   function sync() {
     const input = paymentPhoto();
     if (!input) return;
-
-    const method = currentMethod();
-    const section = paymentSection();
-    if (!section) return;
-
-    if (method === 'cash') {
-      input.required = false;
-      input.removeAttribute('required');
+    const block = paymentBlock();
+    if (!block) return;
+    const cash = currentMethod() === 'cash';
+    input.required = !cash;
+    if (cash) input.removeAttribute('required');
+    else input.setAttribute('required', 'required');
+    if (cash) {
       try { input.value = ''; } catch (_) {}
-      section.style.display = 'none';
+      block.classList.add('hidden');
+      block.style.display = 'none';
     } else {
-      input.required = true;
-      input.setAttribute('required', 'required');
-      section.style.display = '';
+      block.classList.remove('hidden');
+      block.style.display = '';
     }
   }
 
-  // Reaplica la UI después de cambiar el método o reconstruir la pantalla.
+  function scheduleSync() {
+    [0,50,150,400,900].forEach(ms => setTimeout(sync, ms));
+  }
+
   document.addEventListener('click', e => {
     const b = e.target.closest?.('#app button');
-    if (!b || !/Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')) return;
-    setTimeout(sync, 0);
-    setTimeout(sync, 80);
-    setTimeout(sync, 250);
+    if (b && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')) scheduleSync();
   }, false);
 
-  const observer = new MutationObserver(() => setTimeout(sync, 0));
-  const target = document.getElementById('app') || document.body;
-  observer.observe(target, {childList:true, subtree:true, attributes:true, attributeFilter:['class','required']});
+  const observer = new MutationObserver(() => scheduleSync());
+  observer.observe(document.getElementById('app') || document.body, {
+    childList:true, subtree:true, attributes:true, attributeFilter:['class','required']
+  });
+  scheduleSync();
 
-  setTimeout(sync, 100);
-  setTimeout(sync, 500);
-  setTimeout(sync, 1200);
-
-  // Validación y registro: placa siempre; comprobante solo para pagos digitales.
+  // Placa siempre obligatoria; comprobante únicamente en Yape, Plin o transferencia.
   window.finishSale = async function() {
     if (!canOperate()) return toast('No tienes permiso.', true);
     if (!selectedClient || !selectedVehicle) return toast('Selecciona cliente y vehículo.', true);
