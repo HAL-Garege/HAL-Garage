@@ -1,64 +1,77 @@
 // Evidencia de venta según método de pago.
 // Efectivo: solo placa. Yape/Plin/Transferencia: placa + comprobante.
-// También corrige la validación final de finishSale para que efectivo no exija comprobante.
 (() => {
   const paymentPhoto = () => document.getElementById('paymentPhoto');
   const platePhoto = () => document.getElementById('platePhoto');
-  const isSalePage = () => {
-    const app = document.getElementById('app');
-    return !!app && /Efectivo|Yape|Plin|Transfer/i.test(app.textContent || '');
-  };
-  const wrapperOf = el => el?.closest('label')?.parentElement || el?.parentElement;
 
   function currentMethod() {
-    const active = [...document.querySelectorAll('#app button')].find(b =>
-      b.classList.contains('active') && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')
-    );
-    if (active) return /Efectivo/i.test(active.textContent) ? 'cash' : 'digital';
-    const selected = document.querySelector('#app [data-payment-method].active');
-    if (selected) return /Efectivo/i.test(selected.textContent || '') ? 'cash' : 'digital';
-    return window.salePayment === 'cash' ? 'cash' : (window.salePayment || null);
+    // Primero usa el estado real de la venta.
+    try {
+      if (typeof salePayment !== 'undefined') return salePayment === 'cash' ? 'cash' : 'digital';
+    } catch (_) {}
+
+    // Respaldo para interfaces que marcan el botón activo.
+    const buttons = [...document.querySelectorAll('#app button')];
+    const active = buttons.find(b => b.classList.contains('active') && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || ''));
+    if (active) return /Efectivo/i.test(active.textContent || '') ? 'cash' : 'digital';
+    return 'cash';
+  }
+
+  function paymentSection() {
+    const input = paymentPhoto();
+    if (!input) return null;
+
+    // Busca el bloque que contiene específicamente el texto del comprobante.
+    let el = input;
+    while (el && el !== document.body) {
+      const text = (el.textContent || '').trim();
+      if (/Comprobante de pago/i.test(text) && !/Foto de placa al entregar/i.test(text)) return el;
+      el = el.parentElement;
+    }
+
+    // Respaldo: etiqueta del input y su contenedor inmediato.
+    const label = input.closest('label');
+    return label?.parentElement || label || input.parentElement;
   }
 
   function sync() {
-    if (!isSalePage()) return;
     const input = paymentPhoto();
     if (!input) return;
+
     const method = currentMethod();
-    if (!method) return;
-    const wrapper = wrapperOf(input);
-    const label = input.closest('label') || document.querySelector('label[for="paymentPhoto"]');
+    const section = paymentSection();
+    if (!section) return;
+
     if (method === 'cash') {
       input.required = false;
       input.removeAttribute('required');
-      input.value = '';
-      if (wrapper) wrapper.style.display = 'none';
-      if (label && label !== wrapper) label.style.display = 'none';
+      try { input.value = ''; } catch (_) {}
+      section.style.display = 'none';
     } else {
       input.required = true;
       input.setAttribute('required', 'required');
-      if (wrapper) wrapper.style.display = '';
-      if (label && label !== wrapper) label.style.display = '';
+      section.style.display = '';
     }
   }
 
+  // Reaplica la UI después de cambiar el método o reconstruir la pantalla.
   document.addEventListener('click', e => {
     const b = e.target.closest?.('#app button');
     if (!b || !/Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')) return;
     setTimeout(sync, 0);
     setTimeout(sync, 80);
+    setTimeout(sync, 250);
   }, false);
 
-  const obs = new MutationObserver(() => {
-    if (isSalePage()) sync();
-  });
-  obs.observe(document.getElementById('app') || document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['class']});
-  setTimeout(sync, 250);
-  setTimeout(sync, 800);
+  const observer = new MutationObserver(() => setTimeout(sync, 0));
+  const target = document.getElementById('app') || document.body;
+  observer.observe(target, {childList:true, subtree:true, attributes:true, attributeFilter:['class','required']});
 
-  // Reemplaza únicamente la validación final, manteniendo la lógica de venta existente.
-  // Para efectivo no se sube ni se registra un comprobante de pago.
-  const originalFinishSale = window.finishSale;
+  setTimeout(sync, 100);
+  setTimeout(sync, 500);
+  setTimeout(sync, 1200);
+
+  // Validación y registro: placa siempre; comprobante solo para pagos digitales.
   window.finishSale = async function() {
     if (!canOperate()) return toast('No tienes permiso.', true);
     if (!selectedClient || !selectedVehicle) return toast('Selecciona cliente y vehículo.', true);
@@ -66,13 +79,12 @@
 
     const plate = platePhoto()?.files?.[0];
     const payment = paymentPhoto()?.files?.[0];
-    const method = salePayment || 'cash';
+    let method = 'cash';
+    try { method = (typeof salePayment !== 'undefined' && salePayment) || 'cash'; } catch (_) {}
 
     if (!plate) return toast('La foto de placa es obligatoria.', true);
     if (method !== 'cash' && !payment) return toast('Para Yape, Plin o transferencia debes adjuntar el comprobante.', true);
 
-    // Si por alguna razón la función original ya fue reemplazada por otra corrección
-    // compatible, usamos esta versión completa para evitar la validación antigua.
     const total = saleItems.reduce((a, x) => a + Number(x.subtotal || 0), 0);
     try {
       const {data: sale, error} = await db.from('sales').insert({
@@ -84,9 +96,7 @@
       }).select().single();
       if (error) throw error;
 
-      const {error: ie} = await db.from('sale_items').insert(
-        saleItems.map(x => ({...x, sale_id: sale.id}))
-      );
+      const {error: ie} = await db.from('sale_items').insert(saleItems.map(x => ({...x, sale_id: sale.id})));
       if (ie) throw ie;
 
       const {error: pe} = await db.from('payments').insert({
