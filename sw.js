@@ -1,6 +1,7 @@
-const CACHE = 'hal-garage-v6';
+const CACHE = 'hal-garage-v7';
 const ENHANCEMENTS = './hal-enhancements.js?v=3';
 const PHOTO_FIX = './hal-photo-fix.js?v=1';
+const VEHICLE_FIX = './vehicle-category-fix.js?v=1';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +9,8 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './hal-enhancements.js?v=3',
-  './hal-photo-fix.js?v=1'
+  './hal-photo-fix.js?v=1',
+  './vehicle-category-fix.js?v=1'
 ];
 
 self.addEventListener('install', event => {
@@ -28,7 +30,7 @@ async function enhancedIndex(request){
   const type = response.headers.get('content-type') || '';
   if(!type.includes('text/html')) return response;
   const source = await response.text();
-  const injected = source.replace('</body>', `<script src="${PHOTO_FIX}"></script><script src="${ENHANCEMENTS}"></script></body>`);
+  const injected = source.replace('</body>', `<script src="${PHOTO_FIX}"></script><script src="${ENHANCEMENTS}"></script><script src="${VEHICLE_FIX}"></script></body>`);
   const headers = new Headers(response.headers);
   headers.set('content-type','text/html; charset=utf-8');
   return new Response(injected,{status:response.status,statusText:response.statusText,headers});
