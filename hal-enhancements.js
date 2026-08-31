@@ -8,11 +8,10 @@
   }
   window.closeHalEnhModal = () => document.getElementById('halEnhModal')?.remove();
 
-  async function viewSaleEvidenceByNumber(saleNumber){
+  async function viewSaleEvidenceById(saleId){
     try{
-      const cleanNumber = String(saleNumber ?? '').match(/\d+/)?.[0];
-      if(!cleanNumber) throw new Error('Número de venta inválido.');
-      const {data:sale,error:se}=await db.from('sales').select('id,sale_number,created_at').eq('sale_number',Number(cleanNumber)).limit(1).maybeSingle();
+      if(!saleId) throw new Error('Venta inválida.');
+      const {data:sale,error:se}=await db.from('sales').select('id,sale_number,created_at').eq('id',saleId).single();
       if(se) throw se;
       if(!sale) throw new Error('No se encontró la venta.');
       const {data:rows,error}=await db.from('sale_evidence').select('evidence_type,storage_path,created_at').eq('sale_id',sale.id).order('created_at');
@@ -28,31 +27,43 @@
         ${images.map(i=>`<div class="card"><b>${label(i.type)}</b><img src="${i.url}" class="photo-preview" style="max-height:360px"><a class="btn alt" style="display:block;text-align:center;text-decoration:none" href="${i.url}" target="_blank" rel="noopener">Abrir foto</a></div>`).join('') || '<div class="card muted">No hay fotos registradas para esta venta.</div>'}`);
     }catch(e){ toast(e.message || 'No se pudieron cargar las fotos.',true); }
   }
-  window.viewSaleEvidenceByNumber=viewSaleEvidenceByNumber;
+  window.viewSaleEvidenceById=viewSaleEvidenceById;
+  window.viewSaleEvidenceByNumber=async function(){ return toast('Esta venta se identifica por su ID interno.',true); };
+
+  function bindHistoryButton(card,saleId){
+    if(!saleId) return;
+    let b=[...card.querySelectorAll('button')].find(x=>/ver fotos/i.test(x.textContent||''));
+    if(!b){
+      b=document.createElement('button');
+      b.className='btn alt'; b.textContent='📸 Ver fotos';
+      (card.querySelectorAll('button')[card.querySelectorAll('button').length-1]?.parentElement || card).appendChild(b);
+    }
+    b.removeAttribute('onclick');
+    b.onclick=()=>viewSaleEvidenceById(saleId);
+    b.dataset.evidenceButton='1';
+    card.dataset.evidenceSaleId=saleId;
+  }
+
+  async function bindHistoryPhotosByClient(clientId){
+    try{
+      const {data:sales,error}=await db.from('sales').select('id,sale_number,created_at').eq('client_id',clientId).order('created_at',{ascending:false});
+      if(error) throw error;
+      const cards=[...document.querySelectorAll('#app .card')].filter(card=>/Venta\s*#/i.test(card.textContent||''));
+      cards.forEach((card,index)=>bindHistoryButton(card,sales[index]?.id));
+    }catch(e){ console.warn('No se pudieron asociar las fotos del historial:',e); }
+  }
 
   function addHistoryPhotoButtons(){
     document.querySelectorAll('#app .card').forEach(card=>{
+      if(card.dataset.evidenceSaleId) return;
       const text=card.textContent||'';
-      const m=text.match(/Venta\s*#\s*(\d+)/i);
-      if(!m) return;
-      const number=m[1].trim();
-      const existing=[...card.querySelectorAll('button')].filter(b=>/ver fotos/i.test(b.textContent||''));
-      if(existing.length){
-        existing.forEach(b=>{
-          b.removeAttribute('onclick');
-          b.onclick=()=>viewSaleEvidenceByNumber(number);
-          b.dataset.evidenceButton='1';
-        });
-        card.dataset.evidenceButton='1';
-        return;
-      }
-      if(card.dataset.evidenceButton==='1') return;
-      const buttons=card.querySelectorAll('button');
+      if(!/Venta\s*#/i.test(text)) return;
+      const existing=[...card.querySelectorAll('button')].find(b=>/ver fotos/i.test(b.textContent||''));
+      if(existing && existing.dataset.evidenceButton==='1') return;
+      if(existing){ existing.dataset.evidenceButton='1'; return; }
       const b=document.createElement('button');
-      b.className='btn alt'; b.textContent='📸 Ver fotos'; b.dataset.evidenceButton='1';
-      b.onclick=()=>viewSaleEvidenceByNumber(number);
-      (buttons[buttons.length-1]?.parentElement || card).appendChild(b);
-      card.dataset.evidenceButton='1';
+      b.className='btn alt'; b.textContent='📸 Ver fotos'; b.disabled=true; b.title='Cargando evidencia...';
+      (card.querySelectorAll('button')[card.querySelectorAll('button').length-1]?.parentElement || card).appendChild(b);
     });
   }
 
@@ -101,6 +112,15 @@
       if(b.textContent.includes('CONFIRMAR VENTA')) b.textContent=b.textContent.replace('CONFIRMAR VENTA','REGISTRAR VENTA');
       if(b.textContent.includes('Ingresar producto al inventario')) b.textContent=b.textContent.replace('Ingresar producto al inventario','Registrar producto');
     });
+  }
+
+  const originalHistory=window.clientHistory;
+  if(typeof originalHistory==='function'){
+    window.clientHistory=async function(clientId){
+      await originalHistory(clientId);
+      await sleep(80);
+      await bindHistoryPhotosByClient(clientId);
+    };
   }
 
   const originalInventory=window.inventoryPage;
