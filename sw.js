@@ -1,5 +1,5 @@
-const CACHE = 'hal-garage-v7';
-const ENHANCEMENTS = './hal-enhancements.js?v=3';
+const CACHE = 'hal-garage-v8';
+const ENHANCEMENTS = './hal-enhancements.js?v=4';
 const PHOTO_FIX = './hal-photo-fix.js?v=1';
 const VEHICLE_FIX = './vehicle-category-fix.js?v=1';
 const ASSETS = [
@@ -8,7 +8,7 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './hal-enhancements.js?v=3',
+  './hal-enhancements.js?v=4',
   './hal-photo-fix.js?v=1',
   './vehicle-category-fix.js?v=1'
 ];
