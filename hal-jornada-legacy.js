@@ -1,4 +1,4 @@
-// Jornada: mantener exactamente la pantalla original y agregar únicamente "Ver fotos".
+// Jornada: mantener exactamente la pantalla original y agregar "Ver fotos" SOLO en cada registro del historial.
 (() => {
   const originalWorkdayPage = window.workdayPage;
   if (typeof originalWorkdayPage !== 'function') return;
@@ -39,8 +39,8 @@
       </div>`).join('');
       document.body.insertAdjacentHTML('beforeend', `<div class="modal" id="halWorkdayPhotosModal"><div class="modalbox">
         <div class="row"><b>📸 Fotos de jornada</b><button class="btn alt" style="width:auto;margin:0" onclick="document.getElementById('halWorkdayPhotosModal')?.remove()">Cerrar</button></div>
-        <div class="muted" style="margin:6px 0 12px">Evidencias fotográficas</div>
-        ${body || '<div class="card muted">No hay fotos registradas.</div>'}
+        <div class="muted" style="margin:6px 0 12px">Evidencias fotográficas de esta jornada</div>
+        ${body || '<div class="card muted">No hay fotos registradas para esta jornada.</div>'}
       </div></div>`);
     } catch (e) {
       toast(e.message || 'No se pudieron cargar las fotos.', true);
@@ -50,31 +50,45 @@
   window.viewWorkdayPhotos = viewWorkdayPhotos;
 
   window.workdayPage = async function() {
+    // Ejecutar la pantalla original sin cambiar su diseño ni sus botones.
     await originalWorkdayPage();
     try {
-      // No se modifica el HTML original: solo se añade un botón al final de la tarjeta activa.
-      const today = new Date().toISOString().slice(0,10);
-      const {data: mine, error} = await db.from('workdays')
-        .select('id,status')
-        .eq('operator_id', HAL_USER.id)
-        .eq('work_date', today)
-        .order('created_at', {ascending:false})
-        .limit(1)
-        .maybeSingle();
-      if (error || !mine) return;
+      // Recuperamos exactamente el mismo historial que muestra la pantalla original.
+      const {data: rows, error} = await db.from('workdays')
+        .select('id')
+        .order('work_date',{ascending:false})
+        .limit(50);
+      if (error) throw error;
 
-      const cards = Array.from(document.querySelectorAll('#app .card'));
-      const activeCard = cards.find(c => c.textContent.includes('Jornada abierta')) || cards.find(c => c.textContent.includes('Jornada iniciada'));
-      if (!activeCard || activeCard.querySelector('[data-hal-workday-photos]')) return;
+      const table = document.querySelector('#app table.table');
+      if (!table) return;
+      const trs = Array.from(table.querySelectorAll('tr'));
+      if (!trs.length) return;
 
-      const btn = document.createElement('button');
-      btn.className = 'btn alt';
-      btn.setAttribute('data-hal-workday-photos','1');
-      btn.textContent = '📸 VER FOTOS';
-      btn.onclick = () => viewWorkdayPhotos(mine.id);
-      activeCard.appendChild(btn);
+      // El botón NO va en la jornada activa. Va al lado del estado de CADA fila histórica.
+      const header = trs[0];
+      if (!header.querySelector('[data-hal-workday-photo-header]')) {
+        const th = document.createElement('th');
+        th.textContent = 'Fotos';
+        th.setAttribute('data-hal-workday-photo-header','1');
+        header.appendChild(th);
+      }
+
+      rows.forEach((w, index) => {
+        const tr = trs[index + 1];
+        if (!tr || tr.querySelector('[data-hal-workday-photos]')) return;
+        const td = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.className = 'btn alt';
+        btn.style.cssText = 'width:auto;padding:6px 8px;margin:0;font-size:11px;white-space:nowrap';
+        btn.setAttribute('data-hal-workday-photos','1');
+        btn.textContent = '📸 Ver fotos';
+        btn.onclick = () => viewWorkdayPhotos(w.id);
+        td.appendChild(btn);
+        tr.appendChild(td);
+      });
     } catch (e) {
-      console.warn('HAL Garage: no se pudo agregar Ver fotos', e);
+      console.warn('HAL Garage: no se pudieron agregar fotos al historial', e);
     }
   };
 })();
