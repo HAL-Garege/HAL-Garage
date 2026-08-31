@@ -2,13 +2,18 @@
   const escC=s=>String(s??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   async function editProductLite(id){if(!(isAdmin()||role()==='supervisor'))return toast('Solo Administrador o Supervisor puede editar productos.',true);try{const {data:p,error}=await db.from('products').select('*').eq('id',id).single();if(error)throw error;const n=prompt('Nombre',p.name);if(n===null)return;const u=prompt('Unidad',p.unit_name||'unidad');if(u===null)return;const min=Number(prompt('Stock mínimo',String(p.minimum_stock||0)));if(!Number.isFinite(min)||min<0)return toast('Stock mínimo inválido.',true);const {error:ue}=await db.from('products').update({name:n.trim(),unit_name:u.trim()||'unidad',minimum_stock:min}).eq('id',id);if(ue)throw ue;toast('Producto actualizado');inventoryPage()}catch(e){toast(e.message||'No se pudo editar.',true)}}
   function bindInventory(){document.querySelectorAll('#app button[onclick^=\"inventoryMove(\"]').forEach(b=>{if(b.dataset.halEdit)return;const m=(b.getAttribute('onclick')||'').match(/inventoryMove\\('([^']+)'\\)/);if(!m)return;const e=document.createElement('button');e.className='smallbtn';e.textContent='Editar';e.onclick=()=>editProductLite(m[1]);b.parentElement.appendChild(e);b.dataset.halEdit='1'})}
-  function addMenuButton(){
+  function cleanMore(){
     const app=document.getElementById('app'); if(!app)return;
-    [...app.querySelectorAll('button')].forEach(b=>{const t=(b.textContent||'').replace(/\s+/g,' ').trim();if(/^🕘\s*Jornada$/i.test(t)||/^Jornada$/i.test(t))b.remove();});
-    if(app.querySelector('button[data-hal-jornada-almuerzo]'))return;
-    const b=document.createElement('button');b.className='btn alt';b.dataset.halJornadaAlmuerzo='1';b.textContent='🕘 Jornada y almuerzo';b.onclick=()=>window.jornadaPageJ?.();app.appendChild(b);
+    let kept=false;
+    [...app.querySelectorAll('button')].forEach(b=>{
+      const t=(b.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^🕘\s*Jornada$/i.test(t)||/^Jornada$/i.test(t)){b.remove();return;}
+      if(/^🕘\s*Jornada y almuerzo$/i.test(t)||/^Jornada y almuerzo$/i.test(t)){
+        if(kept)b.remove();else kept=true;
+      }
+    });
   }
-  const oldMore=window.morePage;if(typeof oldMore==='function')window.morePage=async function(){await oldMore();addMenuButton()};
+  const oldMore=window.morePage;if(typeof oldMore==='function')window.morePage=async function(){await oldMore();cleanMore()};
   const oldInv=window.inventoryPage;if(typeof oldInv==='function')window.inventoryPage=async function(){await oldInv();bindInventory()};
-  setTimeout(()=>{bindInventory()},300);
+  setTimeout(()=>{bindInventory();cleanMore()},300);
 })();
