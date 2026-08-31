@@ -1,5 +1,5 @@
-const CACHE='hal-garage-v12';
-const CORE='./hal-core-fix.js?v=2';
+const CACHE='hal-garage-v13';
+const CORE='./hal-core-fix.js?v=3';
 const PHOTO='./hal-photo-fix.js?v=2';
 const VEHICLE='./vehicle-category-fix.js?v=1';
 const JORNADA='./hal-jornada-lite.js?v=2';
