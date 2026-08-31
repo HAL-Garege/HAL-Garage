@@ -1,8 +1,8 @@
-const CACHE='hal-garage-v15';
+const CACHE='hal-garage-v16';
 const CORE='./hal-core-fix.js?v=3';
 const PHOTO='./hal-photo-fix.js?v=2';
 const VEHICLE='./vehicle-category-fix.js?v=1';
-const JORNADA='./hal-jornada-v4.js?v=1';
+const JORNADA='./hal-jornada-lite.js?v=3';
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png',CORE,PHOTO,VEHICLE,JORNADA];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});
