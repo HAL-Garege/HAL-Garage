@@ -32,7 +32,7 @@
     document.querySelectorAll('#app .card').forEach(card=>{
       if(card.dataset.evidenceButton==='1') return;
       const text=card.textContent||'';
-      const m=text.match(/Venta\s*#\s*([^\n·]+)/i);
+      const m=text.match(/Venta\s*#\s*(\d+)/i);
       if(!m) return;
       const number=m[1].trim();
       const buttons=card.querySelectorAll('button');
