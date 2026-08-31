@@ -10,7 +10,9 @@
 
   async function viewSaleEvidenceByNumber(saleNumber){
     try{
-      const {data:sale,error:se}=await db.from('sales').select('id,sale_number,created_at').eq('sale_number',saleNumber).limit(1).maybeSingle();
+      const cleanNumber = String(saleNumber ?? '').match(/\d+/)?.[0];
+      if(!cleanNumber) throw new Error('Número de venta inválido.');
+      const {data:sale,error:se}=await db.from('sales').select('id,sale_number,created_at').eq('sale_number',Number(cleanNumber)).limit(1).maybeSingle();
       if(se) throw se;
       if(!sale) throw new Error('No se encontró la venta.');
       const {data:rows,error}=await db.from('sale_evidence').select('evidence_type,storage_path,created_at').eq('sale_id',sale.id).order('created_at');
@@ -30,11 +32,21 @@
 
   function addHistoryPhotoButtons(){
     document.querySelectorAll('#app .card').forEach(card=>{
-      if(card.dataset.evidenceButton==='1') return;
       const text=card.textContent||'';
       const m=text.match(/Venta\s*#\s*(\d+)/i);
       if(!m) return;
       const number=m[1].trim();
+      const existing=[...card.querySelectorAll('button')].filter(b=>/ver fotos/i.test(b.textContent||''));
+      if(existing.length){
+        existing.forEach(b=>{
+          b.removeAttribute('onclick');
+          b.onclick=()=>viewSaleEvidenceByNumber(number);
+          b.dataset.evidenceButton='1';
+        });
+        card.dataset.evidenceButton='1';
+        return;
+      }
+      if(card.dataset.evidenceButton==='1') return;
       const buttons=card.querySelectorAll('button');
       const b=document.createElement('button');
       b.className='btn alt'; b.textContent='📸 Ver fotos'; b.dataset.evidenceButton='1';
