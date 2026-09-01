@@ -1,41 +1,58 @@
-// Controles de administración de Clientes y Vehículos.
-// Mantiene el diseño existente y añade edición de contacto para Supervisor/Administrador.
+// Administración de Clientes y Vehículos — edición y eliminación segura.
 (() => {
   const canManageClient = () => typeof isAdmin === 'function' && (isAdmin() || role() === 'supervisor');
+  const canDeleteClient = () => typeof isAdmin === 'function' && isAdmin();
 
-  async function editClientPhone(id, currentPhone){
+  async function editClient(id, currentName, currentPhone){
     if(!canManageClient()) return;
-    const value = prompt('Modificar teléfono / contacto del cliente:', currentPhone || '');
-    if(value === null) return;
-    const phone = value.trim() || null;
+    const name = prompt('Nombre del cliente:', currentName || '');
+    if(name === null) return;
+    const cleanName = name.trim();
+    if(!cleanName) return toast('El nombre del cliente no puede quedar vacío.', true);
+    const phone = prompt('Teléfono / contacto del cliente:', currentPhone || '');
+    if(phone === null) return;
+    const cleanPhone = phone.trim() || null;
     try{
-      const {error}=await db.from('clients').update({phone}).eq('id',id);
+      const {error}=await db.from('clients').update({full_name:cleanName, phone:cleanPhone}).eq('id',id);
       if(error) throw error;
-      toast(phone ? 'Contacto actualizado' : 'Contacto eliminado');
+      toast('Cliente actualizado correctamente');
       await clientsPage();
-    }catch(e){toast(e.message||'No se pudo actualizar el contacto.',true)}
+    }catch(e){toast(e.message||'No se pudo actualizar el cliente.',true)}
   }
 
   async function deleteVehicle(id, plate){
     if(!canManageClient()) return;
-    if(!confirm(`¿Eliminar el vehículo ${plate}?\n\nSe quitará del listado, pero se conservarán sus servicios históricos.`)) return;
+    if(!confirm(`Primera confirmación\n\n¿Eliminar el vehículo ${plate}?\n\nEl vehículo dejará de aparecer en el listado.`)) return;
+    if(!confirm(`Segunda confirmación\n\nVas a eliminar ${plate}.\nSus servicios históricos vinculados a este vehículo también serán eliminados.\n\n¿Estás completamente seguro?`)) return;
     try{
-      const {error}=await db.from('vehicles').update({active:false}).eq('id',id);
-      if(error) throw error;
-      toast('Vehículo eliminado');
+      const {data:sales,error:se}=await db.from('sales').select('id').eq('vehicle_id',id);
+      if(se) throw se;
+      const ids=(sales||[]).map(x=>x.id);
+      if(ids.length){
+        const {error:ce}=await db.from('cash_movements').delete().in('sale_id',ids); if(ce) throw ce;
+        const {error:de}=await db.from('sales').delete().in('id',ids); if(de) throw de;
+      }
+      const {error:ve}=await db.from('vehicles').delete().eq('id',id); if(ve) throw ve;
+      toast('Vehículo y sus registros eliminados');
       await clientsPage();
     }catch(e){toast(e.message||'No se pudo eliminar el vehículo.',true)}
   }
 
   async function deleteClient(id, name){
-    if(!canManageClient()) return;
-    if(!confirm(`¿Eliminar al cliente ${name}?\n\nEl cliente dejará de aparecer en Clientes. Sus servicios históricos se conservarán.`)) return;
+    if(!canDeleteClient()) return;
+    if(!confirm(`Primera confirmación\n\n¿Estás seguro de eliminar al cliente «${name}»?\n\nEsto quitará al cliente de Clientes y también eliminará sus vehículos y registros de ventas/servicios asociados.`)) return;
+    if(!confirm(`SEGUNDA CONFIRMACIÓN\n\nEsta acción es permanente.\n\nCliente: ${name}\n\nSe eliminarán sus ventas, servicios, pagos/movimientos de caja y vehículos.\n\n¿ACEPTAR Y ELIMINAR TODO?`)) return;
     try{
-      const {error}=await db.from('clients').update({active:false}).eq('id',id);
-      if(error) throw error;
-      const {error:ve}=await db.from('vehicles').update({active:false}).eq('client_id',id);
-      if(ve) throw ve;
-      toast('Cliente eliminado');
+      const {data:sales,error:se}=await db.from('sales').select('id').eq('client_id',id);
+      if(se) throw se;
+      const ids=(sales||[]).map(x=>x.id);
+      if(ids.length){
+        const {error:ce}=await db.from('cash_movements').delete().in('sale_id',ids); if(ce) throw ce;
+        const {error:de}=await db.from('sales').delete().in('id',ids); if(de) throw de;
+      }
+      const {error:ve}=await db.from('vehicles').delete().eq('client_id',id); if(ve) throw ve;
+      const {error:cl}=await db.from('clients').delete().eq('id',id); if(cl) throw cl;
+      toast('Cliente y todos sus registros fueron eliminados');
       await clientsPage();
     }catch(e){toast(e.message||'No se pudo eliminar el cliente.',true)}
   }
@@ -46,24 +63,28 @@
     return m?.[1] || null;
   }
 
+  function getPhone(card){
+    const el=Array.from(card.querySelectorAll('.muted')).find(x=>/Sin teléfono|Teléfono|\d/.test(x.textContent||''));
+    return (el?.textContent||'').replace(/^.*?Teléfono\s*:?\s*/i,'').trim() === 'Sin teléfono' ? '' : ((el?.textContent||'').replace(/^.*?Teléfono\s*:?\s*/i,'').trim());
+  }
+
   function inject(){
     if(!canManageClient()) return;
     const app=document.getElementById('app'); if(!app) return;
     const cards=Array.from(app.querySelectorAll('.card'));
     cards.forEach(card=>{
-      const clientId=getClientId(card);
-      if(!clientId) return;
+      const clientId=getClientId(card); if(!clientId) return;
+      const nameEl=card.querySelector('.row b');
+      const name=nameEl?.textContent?.trim()||'este cliente';
+      const phone=getPhone(card);
 
-      // Nuevo: solo Supervisor/Administrador pueden modificar el contacto.
       if(!card.querySelector('[data-hal-edit-client]')){
-        const name=card.querySelector('.row b')?.textContent?.trim()||'este cliente';
-        const phoneText=Array.from(card.querySelectorAll('.muted')).find(x=>/Sin teléfono|\d/.test(x.textContent||''))?.textContent?.trim()||'';
         const edit=document.createElement('button');
         edit.className='btn alt';
         edit.setAttribute('data-hal-edit-client','1');
-        edit.textContent='✏️ Editar contacto';
-        edit.title='Modificar teléfono del cliente';
-        edit.onclick=()=>editClientPhone(clientId, phoneText==='Sin teléfono'?'':phoneText);
+        edit.textContent='✏️ Editar cliente';
+        edit.title='Modificar nombre y teléfono del cliente';
+        edit.onclick=()=>editClient(clientId,name,phone);
         const history=Array.from(card.querySelectorAll('button')).find(b=>(b.getAttribute('onclick')||'').startsWith('clientHistory('));
         if(history) history.insertAdjacentElement('beforebegin',edit); else card.appendChild(edit);
       }
@@ -79,19 +100,20 @@
         del.className='smallbtn';
         del.setAttribute('data-hal-delete-vehicle','1');
         del.textContent='🗑️';
-        del.title='Eliminar vehículo';
+        del.title='Eliminar vehículo y sus registros';
         del.onclick=()=>deleteVehicle(m[2],plate);
         result.appendChild(del);
       });
 
-      if(card.querySelector('[data-hal-delete-client]')) return;
-      const name=card.querySelector('.row b')?.textContent?.trim()||'este cliente';
-      const del=document.createElement('button');
-      del.className='btn red';
-      del.setAttribute('data-hal-delete-client','1');
-      del.textContent='🗑️ Eliminar cliente';
-      del.onclick=()=>deleteClient(clientId,name);
-      card.appendChild(del);
+      if(canDeleteClient() && !card.querySelector('[data-hal-delete-client]')){
+        const del=document.createElement('button');
+        del.className='btn red';
+        del.setAttribute('data-hal-delete-client','1');
+        del.textContent='🗑️ Eliminar cliente';
+        del.title='Eliminar cliente y todos sus registros';
+        del.onclick=()=>deleteClient(clientId,name);
+        card.appendChild(del);
+      }
     });
   }
 
