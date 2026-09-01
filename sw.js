@@ -1,10 +1,10 @@
-const CACHE='hal-garage-v34';
+const CACHE='hal-garage-v35';
 const CORE='./hal-core-fix.js?v=3';
 const PHOTO='./hal-photo-fix.js?v=2';
 const VEHICLE='./vehicle-category-fix.js?v=1';
 const JORNADA='./hal-jornada-legacy.js?v=4';
 const EXPORT='./hal-jornada-export.js?v=4';
-const CAJA_EXPORT='./hal-caja-export.js?v=1';
+const CAJA_EXPORT='./hal-caja-export.js?v=2';
 const CAJA_GASTOS='./hal-caja-gastos.js?v=1';
 const INICIO_GASTO='./hal-inicio-gasto-operario.js?v=1';
 const CLIENT_ADMIN='./hal-client-admin.js?v=2';
