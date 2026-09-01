@@ -1,129 +1,61 @@
-// Evidencia de venta según método de pago.
-// Efectivo: solo placa. Yape/Plin/Transferencia: placa + comprobante.
+// Nueva venta sin solicitud de fotografías.
+// Se mantienen únicamente el registro de la venta, el método de pago y sus movimientos de caja.
 (() => {
-  const paymentPhoto = () => document.getElementById('paymentPhoto');
-  const platePhoto = () => document.getElementById('platePhoto');
+  function removeEvidenceUI() {
+    const ids = ['platePhoto', 'paymentPhoto', 'halPlateEvidenceBlock'];
+    ids.forEach(id => document.getElementById(id)?.closest('.card')?.remove());
 
-  function ensurePlateEvidenceUI() {
-    if (document.getElementById('halPlateEvidenceBlock')) return;
-    const app = document.getElementById('app');
-    if (!app) return;
+    // Si la tarjeta contiene ambos campos, el primer selector ya la elimina.
+    document.querySelectorAll('#app label').forEach(label => {
+      const t = (label.textContent || '').trim();
+      if (/Foto de placa|Comprobante de pago|Entrega \/ pago/i.test(t)) {
+        const card = label.closest('.card');
+        if (card) card.remove();
+      }
+    });
 
-    const confirm = [...app.querySelectorAll('button')].find(b => /CONFIRMAR VENTA/i.test(b.textContent || ''));
-    if (!confirm) return;
+    // Actualizar el subtítulo de Nueva venta para no mencionar evidencias.
+    const title = [...document.querySelectorAll('#app .title')].find(x => /Nueva venta/i.test(x.textContent || ''));
+    if (title) {
+      const date = title.nextElementSibling;
+      if (date && /evidencia/i.test(date.textContent || '')) date.textContent = 'Registra servicios y método de pago';
+    }
+  }
 
-    const block = document.createElement('div');
-    block.id = 'halPlateEvidenceBlock';
-    block.className = 'card';
-    block.innerHTML = `
-      <div style="font-weight:800;font-size:16px">📸 Entrega / pago</div>
-      <div class="muted" style="margin:4px 0 8px">Al terminar el servicio se toma la foto de la placa.</div>
-      <label>Foto de placa al entregar (obligatoria)</label>
-      <input id="platePhoto" type="file" accept="image/*" capture="environment" class="hidden">
-      <button type="button" class="btn alt" id="halTakePlatePhoto">📷 TOMAR FOTO DE PLACA</button>
-      <div id="halPlatePhotoStatus" class="muted" style="margin-top:7px">Sin foto seleccionada</div>
-      <img id="halPlatePreview" class="photo-preview hidden" alt="Foto de placa">
-    `;
+  function hideEvidenceSoon() {
+    [0, 80, 250, 600].forEach(ms => setTimeout(removeEvidenceUI, ms));
+  }
 
-    confirm.parentElement.insertBefore(block, confirm);
-
-    const input = document.getElementById('platePhoto');
-    const button = document.getElementById('halTakePlatePhoto');
-    const status = document.getElementById('halPlatePhotoStatus');
-    const preview = document.getElementById('halPlatePreview');
-
-    button.onclick = () => input.click();
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      status.textContent = '✅ Foto seleccionada: ' + file.name;
-      status.className = 'success';
-      preview.src = URL.createObjectURL(file);
-      preview.classList.remove('hidden');
+  // La pantalla de venta es dinámica; se limpia solo al entrar a Nueva venta.
+  const originalGo = window.go;
+  if (typeof originalGo === 'function') {
+    window.go = function(p) {
+      const result = originalGo.apply(this, arguments);
+      if (p === 'sale') hideEvidenceSoon();
+      return result;
     };
   }
 
-  function currentMethod() {
-    try {
-      if (typeof salePayment !== 'undefined') return salePayment === 'cash' ? 'cash' : 'digital';
-    } catch (_) {}
-    const active = [...document.querySelectorAll('#app button')].find(b =>
-      b.classList.contains('active') && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')
-    );
-    if (active) return /Efectivo/i.test(active.textContent || '') ? 'cash' : 'digital';
-    return 'cash';
+  // Por si otra función navega directamente a la pantalla de venta.
+  const originalSetHTML = window.setHTML;
+  if (typeof originalSetHTML === 'function') {
+    window.setHTML = function(html) {
+      const result = originalSetHTML.apply(this, arguments);
+      if (/Nueva venta/i.test(String(html || ''))) hideEvidenceSoon();
+      return result;
+    };
   }
 
-  function paymentBlock() {
-    const input = paymentPhoto();
-    if (!input) return null;
-    const labels = [...document.querySelectorAll('#app label')];
-    const label = labels.find(x => /^Comprobante de pago/i.test((x.textContent || '').trim()));
-    if (label) {
-      let el = label.parentElement;
-      for (let i = 0; i < 4 && el; i++, el = el.parentElement) {
-        const text = el.textContent || '';
-        if (/Comprobante de pago/i.test(text) && /Tomar foto del comprobante/i.test(text)) return el;
-      }
-      return label.parentElement || label;
-    }
-    return input.parentElement;
-  }
-
-  function sync() {
-    ensurePlateEvidenceUI();
-    const input = paymentPhoto();
-    if (!input) return;
-    const block = paymentBlock();
-    if (!block) return;
-    const cash = currentMethod() === 'cash';
-    input.required = !cash;
-    if (cash) input.removeAttribute('required');
-    else input.setAttribute('required', 'required');
-    if (cash) {
-      try { input.value = ''; } catch (_) {}
-      block.classList.add('hidden');
-      block.style.display = 'none';
-    } else {
-      block.classList.remove('hidden');
-      block.style.display = '';
-    }
-
-    const plate = platePhoto();
-    if (plate) plate.required = true;
-  }
-
-  function scheduleSync() {
-    [0,50,150,400,900].forEach(ms => setTimeout(sync, ms));
-  }
-
-  document.addEventListener('click', e => {
-    const b = e.target.closest?.('#app button');
-    if (b && /Efectivo|Yape|Plin|Transfer/i.test(b.textContent || '')) scheduleSync();
-  }, false);
-
-  const observer = new MutationObserver(() => scheduleSync());
-  observer.observe(document.getElementById('app') || document.body, {
-    childList:true, subtree:true, attributes:true, attributeFilter:['class','required']
-  });
-  scheduleSync();
-
-  // Placa siempre obligatoria; comprobante únicamente en Yape, Plin o transferencia.
+  // La función original exigía fotos; se reemplaza por una versión que no solicita ninguna.
   window.finishSale = async function() {
     if (!canOperate()) return toast('No tienes permiso.', true);
     if (!selectedClient || !selectedVehicle) return toast('Selecciona cliente y vehículo.', true);
     if (!saleItems.length) return toast('Agrega al menos un servicio.', true);
 
-    ensurePlateEvidenceUI();
-    const plate = platePhoto()?.files?.[0];
-    const payment = paymentPhoto()?.files?.[0];
+    const total = saleItems.reduce((a, x) => a + Number(x.subtotal || 0), 0);
     let method = 'cash';
     try { method = (typeof salePayment !== 'undefined' && salePayment) || 'cash'; } catch (_) {}
 
-    if (!plate) return toast('La foto de placa es obligatoria.', true);
-    if (method !== 'cash' && !payment) return toast('Para Yape, Plin o transferencia debes adjuntar el comprobante.', true);
-
-    const total = saleItems.reduce((a, x) => a + Number(x.subtotal || 0), 0);
     try {
       const {data: sale, error} = await db.from('sales').insert({
         client_id: selectedClient.id,
@@ -154,9 +86,6 @@
       });
       if (ce) throw ce;
 
-      await uploadEvidence(sale.id, 'plate', plate);
-      if (method !== 'cash') await uploadEvidence(sale.id, 'payment', payment);
-
       toast('Venta registrada correctamente');
       selectedClient = null;
       selectedVehicle = null;
@@ -167,4 +96,7 @@
       toast(e.message, true);
     }
   };
+
+  // Limpiar también si la pantalla ya estaba renderizada cuando carga este script.
+  hideEvidenceSoon();
 })();
