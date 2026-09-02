@@ -49,7 +49,7 @@
   }
   const hookGo=window.go;
   if(typeof hookGo==='function'&&!window.__halEditGoHooked){
-    window.go=function(p){const result=hookGo.apply(this,arguments);if(p==='clients')[80,250,600,1000].forEach(ms=>setTimeout(inject,ms);return result};
+    window.go=function(p){const result=hookGo.apply(this,arguments);if(p==='clients'){[80,250,600,1000].forEach(ms=>setTimeout(inject,ms))}return result};
     window.__halEditGoHooked=true;
   }
   hookHistory();
