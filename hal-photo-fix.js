@@ -39,11 +39,11 @@
         used.add(sale.id);
         let b=[...card.querySelectorAll('button')].find(x=>/ver fotos|fotos/i.test(x.textContent||''));
         if(!b){b=document.createElement('button');b.className='btn alt';b.textContent='📸 Ver fotos';card.appendChild(b)}
-        b.disabled=false;b.removeAttribute('disabled');b.title='Ver fotos de la venta';b.onclick=()=>openById(sale.id);b.dataset.halPhotoFix='1';
+        b.disabled=false;b.removeAttribute('disabled');b.title='Ver fotos de la venta';b.dataset.saleId=String(sale.id);b.onclick=()=>openById(sale.id);b.dataset.halPhotoFix='1';
       });
       if(!cards.length){
         const candidates=[...document.querySelectorAll('#app .card')].filter(c=>/Venta\s*#|Servicio|Total|S\\//i.test(c.textContent||''));
-        candidates.forEach((card,index)=>{const sale=sales[index];if(!sale)return;let b=[...card.querySelectorAll('button')].find(x=>/fotos/i.test(x.textContent||''));if(!b){b=document.createElement('button');b.className='btn alt';b.textContent='📸 Ver fotos';card.appendChild(b)}b.onclick=()=>openById(sale.id);b.disabled=false;b.dataset.halPhotoFix='1'});
+        candidates.forEach((card,index)=>{const sale=sales[index];if(!sale)return;let b=[...card.querySelectorAll('button')].find(x=>/fotos/i.test(x.textContent||''));if(!b){b=document.createElement('button');b.className='btn alt';b.textContent='📸 Ver fotos';card.appendChild(b)}b.onclick=()=>openById(sale.id);b.dataset.saleId=String(sale.id);b.disabled=false;b.dataset.halPhotoFix='1'});
       }
     }catch(e){console.warn('No se pudieron asociar las fotos del historial:',e)}
   }
