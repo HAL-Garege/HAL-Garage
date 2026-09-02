@@ -1,6 +1,6 @@
-const CACHE='hal-garage-v42';
+const CACHE='hal-garage-v43';
 const CORE='./hal-core-fix.js?v=3';
-const PHOTO='./hal-photo-fix.js?v=2';
+const PHOTO='./hal-photo-fix.js?v=3';
 const VEHICLE='./vehicle-category-fix.js?v=1';
 const JORNADA='./hal-jornada-legacy.js?v=4';
 const EXPORT='./hal-jornada-export.js?v=4';
