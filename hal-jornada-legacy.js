@@ -1,7 +1,22 @@
-// Jornada: mantener exactamente la pantalla original, agregar Ver fotos por registro y exportación.
+// Jornada: mantener exactamente la pantalla original, agregar Ver fotos por registro, horas trabajadas y exportación.
 (() => {
   const originalWorkdayPage = window.workdayPage;
   if (typeof originalWorkdayPage !== 'function') return;
+
+  function workedHours(w) {
+    if (!w?.created_at || !w?.closed_at) return '—';
+    const start = new Date(w.created_at).getTime();
+    const end = new Date(w.closed_at).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return '—';
+    let minutes = Math.round((end - start) / 60000);
+    if (w.lunch_out_at && w.lunch_in_at) {
+      const lo = new Date(w.lunch_out_at).getTime();
+      const li = new Date(w.lunch_in_at).getTime();
+      if (Number.isFinite(lo) && Number.isFinite(li) && li > lo) minutes -= Math.round((li - lo) / 60000);
+    }
+    minutes = Math.max(0, minutes);
+    return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2,'0')} min`;
+  }
 
   async function viewWorkdayPhotos(workdayId) {
     try {
@@ -29,9 +44,9 @@
   }
 
   function exportCsv(rows) {
-    const header = ['Fecha','Ingreso','Salida a almuerzo','Regreso del almuerzo','Salida de jornada','Estado'];
+    const header = ['Fecha','Ingreso','Salida a almuerzo','Regreso del almuerzo','Salida de jornada','Horas trabajadas','Estado'];
     const fmt = x => x ? new Date(x).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const csvRows = rows.map(w => [w.work_date,fmt(w.created_at),fmt(w.lunch_out_at),fmt(w.lunch_in_at),fmt(w.closed_at),w.status || '—']);
+    const csvRows = rows.map(w => [w.work_date,fmt(w.created_at),fmt(w.lunch_out_at),fmt(w.lunch_in_at),fmt(w.closed_at),workedHours(w),w.status || '—']);
     const csv = '\uFEFF' + [header,...csvRows].map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(';')).join('\r\n');
     const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
     const url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -43,10 +58,10 @@
   function exportPdf(rows) {
     const fmt = x => x ? new Date(x).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '—';
     const esc2 = s => String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    const body = rows.map(w=>`<tr><td>${esc2(w.work_date)}</td><td>${esc2(fmt(w.created_at))}</td><td>${esc2(fmt(w.lunch_out_at))}</td><td>${esc2(fmt(w.lunch_in_at))}</td><td>${esc2(fmt(w.closed_at))}</td><td>${esc2(w.status||'—')}</td></tr>`).join('');
+    const body = rows.map(w=>`<tr><td>${esc2(w.work_date)}</td><td>${esc2(fmt(w.created_at))}</td><td>${esc2(fmt(w.lunch_out_at))}</td><td>${esc2(fmt(w.lunch_in_at))}</td><td>${esc2(fmt(w.closed_at))}</td><td>${esc2(workedHours(w))}</td><td>${esc2(w.status||'—')}</td></tr>`).join('');
     const win = window.open('','_blank');
     if(!win){toast('El navegador bloqueó la ventana del PDF.',true);return;}
-    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>HAL Garage - Marcaciones</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px;text-align:left}th{font-weight:bold}</style></head><body><h1>HAL Garage — Registro de Jornada y Almuerzo</h1><p>Generado: ${esc2(new Date().toLocaleString('es-PE'))}</p><table><thead><tr><th>Fecha</th><th>Ingreso</th><th>Salida almuerzo</th><th>Regreso almuerzo</th><th>Salida jornada</th><th>Estado</th></tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>HAL Garage - Marcaciones</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#111}h1{font-size:18px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px;text-align:left}th{font-weight:bold}</style></head><body><h1>HAL Garage — Registro de Jornada y Almuerzo</h1><p>Generado: ${esc2(new Date().toLocaleString('es-PE'))}</p><table><thead><tr><th>Fecha</th><th>Ingreso</th><th>Salida almuerzo</th><th>Regreso almuerzo</th><th>Salida jornada</th><th>Horas trabajadas</th><th>Estado</th></tr></thead><tbody>${body}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
     win.document.close();
   }
 
@@ -66,10 +81,22 @@
       if (!header.querySelector('[data-hal-workday-photo-header]')) {
         const th = document.createElement('th'); th.textContent='Fotos'; th.setAttribute('data-hal-workday-photo-header','1'); header.appendChild(th);
       }
+      if (!header.querySelector('[data-hal-workday-hours-header]')) {
+        const th = document.createElement('th'); th.textContent='Horas trabajadas'; th.setAttribute('data-hal-workday-hours-header','1');
+        const statusIndex = Array.from(header.children).findIndex(x => /estado/i.test(x.textContent||''));
+        if (statusIndex >= 0) header.insertBefore(th, header.children[statusIndex]); else header.appendChild(th);
+      }
       rows.forEach((w,index)=>{
-        const tr=trs[index+1]; if(!tr || tr.querySelector('[data-hal-workday-photos]')) return;
-        const td=document.createElement('td'),btn=document.createElement('button');
-        btn.className='btn alt'; btn.style.cssText='width:auto;padding:6px 8px;margin:0;font-size:11px;white-space:nowrap'; btn.setAttribute('data-hal-workday-photos','1'); btn.textContent='📸 Ver fotos'; btn.onclick=()=>viewWorkdayPhotos(w.id); td.appendChild(btn); tr.appendChild(td);
+        const tr=trs[index+1]; if(!tr) return;
+        if (!tr.querySelector('[data-hal-workday-hours]')) {
+          const td=document.createElement('td'); td.setAttribute('data-hal-workday-hours','1'); td.textContent=workedHours(w);
+          const statusIndex = Array.from(tr.children).findIndex(x => /abierto|cerrado|pendiente|estado/i.test(x.textContent||''));
+          if (statusIndex >= 0) tr.insertBefore(td,tr.children[statusIndex]); else tr.appendChild(td);
+        }
+        if(!tr.querySelector('[data-hal-workday-photos]')) {
+          const td=document.createElement('td'),btn=document.createElement('button');
+          btn.className='btn alt'; btn.style.cssText='width:auto;padding:6px 8px;margin:0;font-size:11px;white-space:nowrap'; btn.setAttribute('data-hal-workday-photos','1'); btn.textContent='📸 Ver fotos'; btn.onclick=()=>viewWorkdayPhotos(w.id); td.appendChild(btn); tr.appendChild(td);
+        }
       });
 
       const old=document.querySelector('[data-hal-jornada-export-direct]'); old?.remove();
