@@ -1,4 +1,4 @@
-const CACHE='hal-garage-v37';
+const CACHE='hal-garage-v38';
 const CORE='./hal-core-fix.js?v=3';
 const PHOTO='./hal-photo-fix.js?v=2';
 const VEHICLE='./vehicle-category-fix.js?v=1';
@@ -7,7 +7,7 @@ const EXPORT='./hal-jornada-export.js?v=4';
 const CAJA_EXPORT='./hal-caja-export.js?v=2';
 const CAJA_GASTOS='./hal-caja-gastos.js?v=1';
 const INICIO_GASTO='./hal-inicio-gasto-operario.js?v=1';
-const CLIENT_ADMIN='./hal-client-admin.js?v=3';
+const CLIENT_ADMIN='./hal-client-admin.js?v=4';
 const SALE_PAYMENT='./hal-venta-pago-condicional.js?v=4';
 const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png',CORE,PHOTO,VEHICLE,JORNADA,EXPORT,CAJA_EXPORT,CAJA_GASTOS,INICIO_GASTO,CLIENT_ADMIN,SALE_PAYMENT];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));self.skipWaiting()});
