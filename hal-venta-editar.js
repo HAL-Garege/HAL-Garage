@@ -28,7 +28,30 @@
   }
   window.halCloseEditSale=close;
   window.halSaveEditSale=async id=>{try{const st=window.__halEditSale;if(!st)return;const method=document.getElementById('hal-es-payment').value;const rows=[...document.querySelectorAll('#halEditSale .result')];let total=0;for(const r of rows){const iid=r.dataset.item,sid=r.querySelector('.hal-es-service').value,q=Math.max(1,parseInt(r.querySelector('.hal-es-qty').value||1,10)),p=st.prices2.find(z=>z.service_id===sid&&z.vehicle_type_id===st.s.vehicles?.vehicle_type_id);if(!p)throw new Error('No existe precio para ese servicio y tipo de vehículo.');const price=Number(p.price),sub=price*q;total+=sub;const svc=st.services2.find(x=>x.id===sid);const {error}=await db.from('sale_items').update({service_id:sid,vehicle_type_id:st.s.vehicles.vehicle_type_id,service_name_snapshot:svc?.name||'',price_applied:price,quantity:q,subtotal:sub}).eq('id',iid);if(error)throw error}const r=await db.from('sales').update({total}).eq('id',id);if(r.error)throw r.error;const p=await db.from('payments').update({method,amount:total}).eq('sale_id',id);if(p.error)throw p.error;const cm=await db.from('cash_movements').update({payment_method:method,amount:total}).eq('sale_id',id);if(cm.error)console.warn(cm.error);const cid=st.s.client_id;close();toast('Venta actualizada correctamente');if(cid&&typeof clientHistory==='function')await clientHistory(cid)}catch(e){toast(e.message||'No se pudo guardar la venta.',true)}};
-  function inject(){if(!canEdit())return;const app=document.getElementById('app');if(!app)return;app.querySelectorAll('.card').forEach(card=>{card.querySelectorAll('button').forEach(b=>{if(!/ver fotos/i.test(b.textContent||''))return;const box=b.closest('.card');if(!box||box.querySelector('[data-hal-edit-sale]'))return;const m=(box.textContent||'').match(/#(\d+)/);if(!m)return;const btn=document.createElement('button');btn.className='btn alt';btn.textContent='✏️ Editar venta';btn.dataset.halEditSale='1';btn.style.cssText='width:auto;margin:7px 0 0';btn.onclick=async()=>{const {data}=await db.from('sales').select('id,sale_number').eq('sale_number',Number(m[1])).maybeSingle();if(data)open(data.id)};b.insertAdjacentElement('afterend',btn)})})}
-  const old=window.clientHistory;if(typeof old==='function'){window.clientHistory=async function(cid){await old(cid);setTimeout(inject,60)}}
-  setTimeout(inject,500);
+  function inject(){
+    if(!canEdit())return;
+    const app=document.getElementById('app');if(!app)return;
+    app.querySelectorAll('.card').forEach(card=>{
+      const photo=[...card.querySelectorAll('button')].find(b=>/ver fotos/i.test(b.textContent||''));
+      if(!photo||card.querySelector('[data-hal-edit-sale]'))return;
+      const m=(card.textContent||'').match(/#(\d+)/);if(!m)return;
+      const btn=document.createElement('button');btn.className='btn alt';btn.textContent='✏️ Editar venta';btn.dataset.halEditSale='1';btn.style.cssText='width:auto;margin:7px 0 0';
+      btn.onclick=async()=>{const {data}=await db.from('sales').select('id,sale_number').eq('sale_number',Number(m[1])).maybeSingle();if(data)open(data.id);else toast('No se encontró la venta.',true)};
+      photo.insertAdjacentElement('afterend',btn);
+    });
+  }
+  function hookHistory(){
+    if(typeof window.clientHistory==='function'&&!window.__halEditHistoryHooked){
+      const old=window.clientHistory;
+      window.clientHistory=async function(cid){const result=await old(cid);[80,250,600,1000].forEach(ms=>setTimeout(inject,ms));return result};
+      window.__halEditHistoryHooked=true;
+    }
+  }
+  const hookGo=window.go;
+  if(typeof hookGo==='function'&&!window.__halEditGoHooked){
+    window.go=function(p){const result=hookGo.apply(this,arguments);if(p==='clients')[80,250,600,1000].forEach(ms=>setTimeout(inject,ms);return result};
+    window.__halEditGoHooked=true;
+  }
+  hookHistory();
+  [100,300,600,1000,1600,2500].forEach(ms=>setTimeout(()=>{hookHistory();inject()},ms));
 })();
