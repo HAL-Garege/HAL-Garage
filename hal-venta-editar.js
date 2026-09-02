@@ -28,30 +28,43 @@
   }
   window.halCloseEditSale=close;
   window.halSaveEditSale=async id=>{try{const st=window.__halEditSale;if(!st)return;const method=document.getElementById('hal-es-payment').value;const rows=[...document.querySelectorAll('#halEditSale .result')];let total=0;for(const r of rows){const iid=r.dataset.item,sid=r.querySelector('.hal-es-service').value,q=Math.max(1,parseInt(r.querySelector('.hal-es-qty').value||1,10)),p=st.prices2.find(z=>z.service_id===sid&&z.vehicle_type_id===st.s.vehicles?.vehicle_type_id);if(!p)throw new Error('No existe precio para ese servicio y tipo de vehículo.');const price=Number(p.price),sub=price*q;total+=sub;const svc=st.services2.find(x=>x.id===sid);const {error}=await db.from('sale_items').update({service_id:sid,vehicle_type_id:st.s.vehicles.vehicle_type_id,service_name_snapshot:svc?.name||'',price_applied:price,quantity:q,subtotal:sub}).eq('id',iid);if(error)throw error}const r=await db.from('sales').update({total}).eq('id',id);if(r.error)throw r.error;const p=await db.from('payments').update({method,amount:total}).eq('sale_id',id);if(p.error)throw p.error;const cm=await db.from('cash_movements').update({payment_method:method,amount:total}).eq('sale_id',id);if(cm.error)console.warn(cm.error);const cid=st.s.client_id;close();toast('Venta actualizada correctamente');if(cid&&typeof clientHistory==='function')await clientHistory(cid)}catch(e){toast(e.message||'No se pudo guardar la venta.',true)}};
+  async function findSaleId(card){
+    // Prefer the sale id already attached to the photo/evidence button.
+    const photo=[...card.querySelectorAll('button')].find(b=>/ver fotos/i.test(b.textContent||''));
+    const raw=[photo?.getAttribute('onclick')||'',photo?.dataset?.saleId||'',photo?.dataset?.sale||''].join(' ');
+    const uuid=raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i)?.[0];
+    if(uuid)return uuid;
+    const text=card.textContent||'';
+    const m=text.match(/Venta\s*#\s*(\d+)/i);if(!m)return null;
+    const saleNumber=m[1];
+    // Use text comparison without converting the bigint-like sale number to JS Number.
+    const {data,error}=await db.from('sales').select('id,sale_number').eq('sale_number',saleNumber).maybeSingle();
+    if(error){console.warn('No se pudo localizar la venta por número:',error);return null}
+    return data?.id||null;
+  }
   function inject(){
     if(!canEdit())return;
     const app=document.getElementById('app');if(!app)return;
     app.querySelectorAll('.card').forEach(card=>{
       const photo=[...card.querySelectorAll('button')].find(b=>/ver fotos/i.test(b.textContent||''));
       if(!photo||card.querySelector('[data-hal-edit-sale]'))return;
-      const m=(card.textContent||'').match(/#(\d+)/);if(!m)return;
       const btn=document.createElement('button');btn.className='btn alt';btn.textContent='✏️ Editar venta';btn.dataset.halEditSale='1';btn.style.cssText='width:auto;margin:7px 0 0';
-      btn.onclick=async()=>{const {data}=await db.from('sales').select('id,sale_number').eq('sale_number',Number(m[1])).maybeSingle();if(data)open(data.id);else toast('No se encontró la venta.',true)};
+      btn.onclick=async()=>{btn.disabled=true;try{const id=await findSaleId(card);if(id)await open(id);else toast('No se encontró la venta.',true)}finally{btn.disabled=false}};
       photo.insertAdjacentElement('afterend',btn);
     });
   }
   function hookHistory(){
     if(typeof window.clientHistory==='function'&&!window.__halEditHistoryHooked){
       const old=window.clientHistory;
-      window.clientHistory=async function(cid){const result=await old(cid);[80,250,600,1000].forEach(ms=>setTimeout(inject,ms));return result};
+      window.clientHistory=async function(cid){const result=await old(cid);setTimeout(inject,120);return result};
       window.__halEditHistoryHooked=true;
     }
   }
   const hookGo=window.go;
   if(typeof hookGo==='function'&&!window.__halEditGoHooked){
-    window.go=function(p){const result=hookGo.apply(this,arguments);if(p==='clients'){[80,250,600,1000].forEach(ms=>setTimeout(inject,ms))}return result};
+    window.go=function(p){const result=hookGo.apply(this,arguments);if(p==='clients')setTimeout(inject,120);return result};
     window.__halEditGoHooked=true;
   }
   hookHistory();
-  [100,300,600,1000,1600,2500].forEach(ms=>setTimeout(()=>{hookHistory();inject()},ms));
+  [150,500,1000].forEach(ms=>setTimeout(()=>{hookHistory();inject()},ms));
 })();
