@@ -1,0 +1,11 @@
+{
+  "name": "Club HAL Garage",
+  "short_name": "Club HAL",
+  "description": "Programa de fidelización para clientes de HAL Garage",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#0b67b2",
+  "lang": "es-PE",
+  "icons": []
+}
