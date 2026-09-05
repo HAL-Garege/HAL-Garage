@@ -16,7 +16,7 @@
         <span>${esc(s.name)}</span><b>${active ? '✓ Seleccionado' : 'Seleccionar'}</b>
       </div>${active ? `<div class="card" style="margin-top:4px;margin-bottom:8px" onclick="event.stopPropagation()">
         <label>Monto cobrado (S/)</label>
-        <input type="number" min="0" step="0.01" value="${Number(item.price_applied || 0)}" placeholder="Ej. 15.00" oninput="setManualAmount('${s.id}',this.value)">
+        <input type="number" min="0.01" step="0.01" value="${Number(item.price_applied || 0)}" placeholder="Ej. 15.00" oninput="setManualAmount('${s.id}',this.value)">
         <label>Motivo / observación del precio</label>
         <input type="text" value="${esc(item.price_reason || '')}" placeholder="Ej. Cliente frecuente, amistad, primera visita..." oninput="setManualReason('${s.id}',this.value)">
       </div>` : ''}`;
@@ -32,15 +32,16 @@
     } else {
       const s = services.find(x => x.id === id);
       if (!s) return;
-      saleItems.push({
+      const item = {
         service_id: id,
         vehicle_type_id: selectedVehicle.vehicle_type_id || null,
         service_name_snapshot: s.name,
         price_applied: 0,
-        price_reason: '',
         quantity: 1,
         subtotal: 0
-      });
+      };
+      Object.defineProperty(item, 'price_reason', { value: '', writable: true, enumerable: false });
+      saleItems.push(item);
     }
     serviceRows();
   }
@@ -90,10 +91,13 @@
   if (typeof originalFinishSale === 'function') {
     window.finishSale = async function() {
       for (const item of saleItems) {
-        if (!(Number(item.price_applied) >= 0)) return toast('Ingresa un monto válido en cada servicio.', true);
-        item.subtotal = Number(item.price_applied) * Number(item.quantity || 1);
+        const amount = Number(item.price_applied);
+        if (!(amount > 0)) return toast('Ingresa el monto cobrado en cada servicio.', true);
+        item.subtotal = amount * Number(item.quantity || 1);
+        const service = services.find(s => s.id === item.service_id);
+        const baseName = service?.name || item.service_name_snapshot || 'Servicio';
         const reason = String(item.price_reason || '').trim();
-        if (reason) item.service_name_snapshot = `${item.service_name_snapshot} — ${reason}`;
+        item.service_name_snapshot = reason ? `${baseName} — ${reason}` : baseName;
       }
       updateTotalManual();
       return originalFinishSale.apply(this, arguments);
