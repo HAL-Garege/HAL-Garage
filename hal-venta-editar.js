@@ -1,4 +1,5 @@
-// HAL Garage — edición de ventas v4.
+// HAL Garage — edición de ventas v5.
+// Inserta Editar en cada tarjeta y extrae únicamente el número de venta.
 (() => {
   const escE=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   let editState=null;
@@ -17,8 +18,9 @@
     }catch(e){toast(e.message||'No se pudo abrir la venta.',true)}
   }
   async function editSaleByNumber(number){
-    const {data,error}=await db.from('sales').select('id').eq('sale_number',number).limit(1).maybeSingle();
-    if(error||!data)return toast('No se encontró la venta #'+number,true);
+    const n=String(number).match(/^\d+$/)?.[0];if(!n)return toast('Número de venta inválido.',true);
+    const {data,error}=await db.from('sales').select('id').eq('sale_number',n).limit(1).maybeSingle();
+    if(error||!data)return toast('No se encontró la venta #'+n,true);
     return editSale(data.id);
   }
   function selectEditPayment(p){window.__editPay=p;document.querySelectorAll('#editPay button').forEach(b=>b.classList.toggle('active',b.dataset.p===p))}
@@ -39,11 +41,12 @@
     try{
       const cards=[...document.querySelectorAll('#app .card')].filter(card=>!card.dataset.halEditSale);
       if(!cards.length)return;
-      const nums=cards.map(card=>(card.textContent||'').match(/Venta\s*#\s*([^\s]+)/i)?.[1]).filter(Boolean);if(!nums.length)return;
-      const {data:sales,error}=await db.from('sales').select('id,sale_number,status').in('sale_number',nums);if(error)throw error;
-      const byNumber=Object.fromEntries((sales||[]).map(s=>[String(s.sale_number),s]));
-      cards.forEach(card=>{const m=(card.textContent||'').match(/Venta\s*#\s*([^\s]+)/i);if(!m)return;const sale=byNumber[m[1]];if(!sale)return;if(sale.status==='voided'){card.dataset.halEditSale='1';return}if(card.querySelector('[data-hal-edit-button]')){card.dataset.halEditSale='1';return}const b=document.createElement('button');b.className='btn alt';b.textContent='✏️ Editar';b.setAttribute('data-hal-edit-button','1');b.style.cssText='width:auto;margin:7px 0 0';b.onclick=()=>editSale(sale.id);card.appendChild(b);card.dataset.halEditSale='1'});
-    }catch(e){console.warn('Editar ventas v4:',e)}
+      cards.forEach(card=>{
+        const m=(card.textContent||'').match(/Venta\s*#\s*(\d+)/i);if(!m)return;
+        if(card.querySelector('[data-hal-edit-button]')){card.dataset.halEditSale='1';return;}
+        const b=document.createElement('button');b.className='btn alt';b.textContent='✏️ Editar';b.setAttribute('data-hal-edit-button','1');b.style.cssText='width:auto;margin:7px 0 0';b.onclick=()=>editSaleByNumber(m[1]);card.appendChild(b);card.dataset.halEditSale='1';
+      });
+    }catch(e){console.warn('Editar ventas v5:',e)}
   }
   window.editSale=editSale;window.editSaleByNumber=editSaleByNumber;window.selectEditPayment=selectEditPayment;window.closeEditSale=closeEditSale;window.saveEditSale=saveEditSale;
   const app=document.getElementById('app');if(app){const observer=new MutationObserver(()=>{clearTimeout(window.__halEditTimer);window.__halEditTimer=setTimeout(addEditButtons,80)});observer.observe(app,{childList:true,subtree:true});setTimeout(addEditButtons,250)}
