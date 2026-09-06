@@ -1,5 +1,5 @@
-// HAL Garage — edición de ventas v5.
-// Inserta Editar en cada tarjeta y extrae únicamente el número de venta.
+// HAL Garage — edición de ventas v6.
+// El botón usa el ID real de la venta obtenido desde la tarjeta, evitando errores de concatenación.
 (() => {
   const escE=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   let editState=null;
@@ -17,37 +17,28 @@
       document.getElementById('editService').value=item?.service_id||'';selectEditPayment(payment?.payment_method||'cash');
     }catch(e){toast(e.message||'No se pudo abrir la venta.',true)}
   }
-  async function editSaleByNumber(number){
-    const n=String(number).match(/^\d+$/)?.[0];if(!n)return toast('Número de venta inválido.',true);
-    const {data,error}=await db.from('sales').select('id').eq('sale_number',n).limit(1).maybeSingle();
-    if(error||!data)return toast('No se encontró la venta #'+n,true);
-    return editSale(data.id);
-  }
   function selectEditPayment(p){window.__editPay=p;document.querySelectorAll('#editPay button').forEach(b=>b.classList.toggle('active',b.dataset.p===p))}
   function closeEditSale(){document.getElementById('halEditSale')?.remove();editState=null}
   async function saveEditSale(){
-    const x=editState;if(!x)return;
-    const item=x.items[0],service=services.find(s=>s.id===document.getElementById('editService')?.value),amount=Number(document.getElementById('editAmount')?.value),pay=window.__editPay||'cash';
+    const x=editState;if(!x)return;const item=x.items[0],service=services.find(s=>s.id===document.getElementById('editService')?.value),amount=Number(document.getElementById('editAmount')?.value),pay=window.__editPay||'cash';
     if(!service||!item)return toast('No se encontró el detalle de la venta.',true);if(!(amount>0))return toast('Ingresa un costo válido.',true);
-    try{
-      const subtotal=amount*Number(item.quantity||1);let r=await db.from('sale_items').update({service_id:service.id,service_name_snapshot:service.name,price_applied:amount,subtotal}).eq('id',item.id);if(r.error)throw r.error;
-      r=await db.from('sales').update({total:subtotal}).eq('id',x.sale.id);if(r.error)throw r.error;
-      if(x.payment){r=await db.from('payments').update({payment_method:pay,amount:subtotal}).eq('id',x.payment.id);if(r.error)throw r.error}else{r=await db.from('payments').insert({sale_id:x.sale.id,payment_method:pay,amount:subtotal,...createdBy()});if(r.error)throw r.error}
-      r=await db.from('cash_movements').select('id').eq('reference_id',x.sale.id).eq('movement_type','income').limit(1).maybeSingle();if(r.error)throw r.error;if(r.data){r=await db.from('cash_movements').update({amount:subtotal,payment_method:pay}).eq('id',r.data.id);if(r.error)throw r.error}
-      const cid=x.sale.client_id;closeEditSale();toast('Venta actualizada correctamente');if(cid&&typeof clientHistory==='function')setTimeout(()=>clientHistory(cid),80);
-    }catch(e){toast(e.message||'No se pudo guardar la venta.',true)}
+    try{const subtotal=amount*Number(item.quantity||1);let r=await db.from('sale_items').update({service_id:service.id,service_name_snapshot:service.name,price_applied:amount,subtotal}).eq('id',item.id);if(r.error)throw r.error;r=await db.from('sales').update({total:subtotal}).eq('id',x.sale.id);if(r.error)throw r.error;if(x.payment){r=await db.from('payments').update({payment_method:pay,amount:subtotal}).eq('id',x.payment.id);if(r.error)throw r.error}else{r=await db.from('payments').insert({sale_id:x.sale.id,payment_method:pay,amount:subtotal,...createdBy()});if(r.error)throw r.error}r=await db.from('cash_movements').select('id').eq('reference_id',x.sale.id).eq('movement_type','income').limit(1).maybeSingle();if(r.error)throw r.error;if(r.data){r=await db.from('cash_movements').update({amount:subtotal,payment_method:pay}).eq('id',r.data.id);if(r.error)throw r.error}const cid=x.sale.client_id;closeEditSale();toast('Venta actualizada correctamente');if(cid&&typeof clientHistory==='function')setTimeout(()=>clientHistory(cid),80)}catch(e){toast(e.message||'No se pudo guardar la venta.',true)}
   }
   async function addEditButtons(){
     try{
-      const cards=[...document.querySelectorAll('#app .card')].filter(card=>!card.dataset.halEditSale);
-      if(!cards.length)return;
-      cards.forEach(card=>{
-        const m=(card.textContent||'').match(/Venta\s*#\s*(\d+)/i);if(!m)return;
-        if(card.querySelector('[data-hal-edit-button]')){card.dataset.halEditSale='1';return;}
-        const b=document.createElement('button');b.className='btn alt';b.textContent='✏️ Editar';b.setAttribute('data-hal-edit-button','1');b.style.cssText='width:auto;margin:7px 0 0';b.onclick=()=>editSaleByNumber(m[1]);card.appendChild(b);card.dataset.halEditSale='1';
-      });
-    }catch(e){console.warn('Editar ventas v5:',e)}
+      const cards=[...document.querySelectorAll('#app .card')];
+      for(const card of cards){
+        if(card.querySelector('[data-hal-edit-button]'))continue;
+        const first=(card.textContent||'').split(/\n/).map(x=>x.trim()).find(x=>/^Venta\s*#/i.test(x));
+        if(!first)continue;
+        const m=first.match(/^Venta\s*#\s*(\d+)\b/i);if(!m)continue;
+        const saleNumber=m[1];
+        const {data:sale,error}=await db.from('sales').select('id,sale_number,status').eq('sale_number',saleNumber).limit(1).maybeSingle();
+        if(error||!sale||sale.status==='voided')continue;
+        const b=document.createElement('button');b.className='btn alt';b.textContent='✏️ Editar';b.setAttribute('data-hal-edit-button','1');b.style.cssText='width:auto;margin:7px 0 0';b.onclick=()=>editSale(sale.id);card.appendChild(b);
+      }
+    }catch(e){console.warn('Editar ventas v6:',e)}
   }
-  window.editSale=editSale;window.editSaleByNumber=editSaleByNumber;window.selectEditPayment=selectEditPayment;window.closeEditSale=closeEditSale;window.saveEditSale=saveEditSale;
-  const app=document.getElementById('app');if(app){const observer=new MutationObserver(()=>{clearTimeout(window.__halEditTimer);window.__halEditTimer=setTimeout(addEditButtons,80)});observer.observe(app,{childList:true,subtree:true});setTimeout(addEditButtons,250)}
+  window.editSale=editSale;window.selectEditPayment=selectEditPayment;window.closeEditSale=closeEditSale;window.saveEditSale=saveEditSale;
+  const app=document.getElementById('app');if(app){const observer=new MutationObserver(()=>{clearTimeout(window.__halEditTimer);window.__halEditTimer=setTimeout(addEditButtons,100)});observer.observe(app,{childList:true,subtree:true});setTimeout(addEditButtons,300)}
 })();
