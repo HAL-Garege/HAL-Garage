@@ -2,7 +2,7 @@
   "name": "Club HAL Garage",
   "short_name": "Club HAL",
   "description": "Programa de fidelización para clientes de HAL Garage",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=75",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,6 +10,6 @@
   "theme_color": "#0b67b2",
   "lang": "es-PE",
   "icons": [
-    {"src":"./club-icon.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any"}
+    {"src":"./club-icon.svg?v=2","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}
   ]
 }
