@@ -3,19 +3,28 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#07111b"><title>HAL Garage · Club</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--gold:#f0b52b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:760px;margin:auto;min-height:100vh;padding-bottom:40px}header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:15px 16px;display:flex;justify-content:space-between;align-items:center}.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.user{font-size:12px;color:var(--muted)}main{padding:18px 15px}.eyebrow{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}.title{font-size:28px;font-weight:900;margin:3px 0 5px}.sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-height:145px;display:flex;flex-direction:column}.card.active{border-color:#176ea8;box-shadow:0 8px 24px #0003}.icon{font-size:27px;margin-bottom:9px}.card h3{margin:0 0 5px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;flex:1}.btn{margin-top:12px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;padding:10px 12px;text-decoration:none;text-align:center;font-size:12px}.disabled{margin-top:12px;border-radius:10px;padding:9px 10px;background:#152432;color:#718497;text-align:center;font-size:11px;font-weight:700}.note{margin-top:18px;background:#0b1d2a;border:1px solid #17374e;border-radius:13px;padding:12px;font-size:12px;color:#9eb2c3}.back{display:inline-block;margin-bottom:14px;color:#8dccff;text-decoration:none;font-size:12px;font-weight:800}@media(max-width:520px){.grid{grid-template-columns:1fr}.card{min-height:125px}}
+:root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--red:#ff6262}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:760px;margin:auto;min-height:100vh;padding-bottom:40px}header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:15px 16px;display:flex;justify-content:space-between;align-items:center}.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.user{font-size:12px;color:var(--muted)}main{padding:18px 15px}.eyebrow{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}.title{font-size:28px;font-weight:900;margin:3px 0 5px}.sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-height:145px;display:flex;flex-direction:column}.card.active{border-color:#176ea8;box-shadow:0 8px 24px #0003}.icon{font-size:27px;margin-bottom:9px}.card h3{margin:0 0 5px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;flex:1}.btn{margin-top:12px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;padding:10px 12px;text-decoration:none;text-align:center;font-size:12px;cursor:pointer}.btn.alt{background:#152b3d}.auth{background:#0e1d2a;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:18px}.auth h3{margin:0 0 6px}.auth p{margin:0 0 12px;color:var(--muted);font-size:12px;line-height:1.5}input{width:100%;background:#07131f;border:1px solid #2a4359;color:#fff;border-radius:9px;padding:11px;margin:5px 0 8px;font:inherit}.msg{margin:8px 0;padding:9px;border-radius:9px;background:#122738;font-size:12px}.msg.err{background:#3b2025;color:#ffb0b0}.hidden{display:none!important}.note{margin-top:18px;background:#0b1d2a;border:1px solid #17374e;border-radius:13px;padding:12px;font-size:12px;color:#9eb2c3}.back{display:inline-block;margin-bottom:14px;color:#8dccff;text-decoration:none;font-size:12px;font-weight:800}@media(max-width:520px){.grid{grid-template-columns:1fr}.card{min-height:125px}}
 </style>
 </head>
 <body>
 <div class="app">
-<header><div class="logo">HAL <b>Garage</b> · Club</div><div class="user">ADMINISTRACIÓN</div></header>
+<header><div class="logo">HAL <b>Garage</b> · Club</div><div class="user" id="userState">Verificando...</div></header>
 <main>
 <a class="back" href="../">← Volver a HAL Garage</a>
 <div class="eyebrow">CENTRO DE ADMINISTRACIÓN</div>
 <div class="title">⭐ Club HAL Garage</div>
 <div class="sub">Gestiona desde un solo lugar el programa de fidelización de clientes. Las opciones de este panel son internas y no muestran información de caja ni montos gastados por los clientes.</div>
-<section class="grid">
+<section class="auth" id="authBox">
+<h3>🔐 Acceso del personal</h3>
+<p>El Centro del Club utiliza Supabase Auth para proteger campañas, premios, puntos y demás módulos. Tu sesión se conservará al cambiar entre módulos.</p>
+<label>Email</label><input id="email" type="email" autocomplete="username" placeholder="correo del personal">
+<label>Contraseña</label><input id="password" type="password" autocomplete="current-password" placeholder="Contraseña de Supabase">
+<div id="authMsg" class="hidden"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="signIn()">Ingresar al Club</button><button class="btn alt hidden" id="logoutBtn" onclick="signOut()">Cerrar sesión</button></div>
+</section>
+<section class="grid hidden" id="modules">
 <div class="card active"><div class="icon">⭐</div><h3>Campañas</h3><p>Configura multiplicadores de puntos, fechas, días y campañas activas.</p><a class="btn" href="./admin-campanas.html">Abrir Campañas</a></div>
 <div class="card active"><div class="icon">🎁</div><h3>Premios y descuentos</h3><p>Crea premios, descuentos y productos canjeables con puntos.</p><a class="btn" href="./admin-modulos.html?module=rewards">Abrir módulo</a></div>
 <div class="card active"><div class="icon">👑</div><h3>Categorías</h3><p>Administra BRONCE, PLATA, ORO y VIP y sus reglas configurables.</p><a class="btn" href="./admin-modulos.html?module=categories">Abrir módulo</a></div>
@@ -29,4 +38,18 @@
 </section>
 <div class="note">🔐 <b>Importante:</b> este centro está separado de la vista del cliente. Aquí se administran beneficios y puntos, pero el cliente nunca verá cuánto dinero gastó. Los permisos reales se controlan en Supabase mediante RLS; no se depende solo de ocultar botones.</div>
 </main></div>
+<script>
+const SUPABASE_URL='https://maqnglazkhwtzskfddgc.supabase.co';
+const SUPABASE_KEY='sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
+const STAFF_SESSION_KEY='HAL_STAFF_SUPABASE_SESSION';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{autoRefreshToken:true,persistSession:false,detectSessionInUrl:false}});
+function $(id){return document.getElementById(id)}
+function showMsg(t,err=false){const e=$('authMsg');e.textContent=t;e.className='msg'+(err?' err':'')}
+function saveSession(s){localStorage.setItem(STAFF_SESSION_KEY,JSON.stringify({access_token:s.access_token,refresh_token:s.refresh_token}))}
+async function restore(){try{const raw=localStorage.getItem(STAFF_SESSION_KEY);if(!raw)return null;const s=JSON.parse(raw);if(!s?.access_token||!s?.refresh_token)return null;const r=await db.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});if(r.error||!r.data?.session)throw r.error||new Error('Sesión inválida');saveSession(r.data.session);return r.data.session.user}catch(e){localStorage.removeItem(STAFF_SESSION_KEY);return null}}
+function enter(user){$('userState').textContent=user.email||'Personal';$('authBox').querySelector('p').textContent='Sesión activa. Ya puedes administrar el Club HAL Garage.';$('email').classList.add('hidden');$('password').classList.add('hidden');$('authBox').querySelectorAll('label').forEach(x=>x.classList.add('hidden'));$('authBox').querySelector('.btn').classList.add('hidden');$('logoutBtn').classList.remove('hidden');$('modules').classList.remove('hidden');showMsg('Sesión Supabase activa.');}
+async function signIn(){const email=$('email').value.trim(),password=$('password').value;if(!email||!password)return showMsg('Ingresa email y contraseña.',true);showMsg('Conectando...');const {data,error}=await db.auth.signInWithPassword({email,password});if(error||!data?.session){showMsg('No se pudo iniciar sesión. Verifica el correo y la contraseña de Supabase.',true);return}saveSession(data.session);enter(data.user)}
+async function signOut(){try{await db.auth.signOut()}catch(_){}localStorage.removeItem(STAFF_SESSION_KEY);location.reload()}
+(async()=>{const u=await restore();if(u)enter(u);else{$('userState').textContent='Sin sesión';showMsg('Inicia sesión para acceder a la administración del Club.')}})();
+</script>
 </body></html>
