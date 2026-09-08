@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111b">
+<title>HAL Garage · Club</title>
+<style>
+:root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--gold:#f0b52b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:760px;margin:auto;min-height:100vh;padding-bottom:40px}header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:15px 16px;display:flex;justify-content:space-between;align-items:center}.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.user{font-size:12px;color:var(--muted)}main{padding:18px 15px}.eyebrow{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}.title{font-size:28px;font-weight:900;margin:3px 0 5px}.sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;min-height:145px;display:flex;flex-direction:column}.card.active{border-color:#176ea8;box-shadow:0 8px 24px #0003}.icon{font-size:27px;margin-bottom:9px}.card h3{margin:0 0 5px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:12px;line-height:1.45;flex:1}.btn{margin-top:12px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;padding:10px 12px;text-decoration:none;text-align:center;font-size:12px}.disabled{margin-top:12px;border-radius:10px;padding:9px 10px;background:#152432;color:#718497;text-align:center;font-size:11px;font-weight:700}.note{margin-top:18px;background:#0b1d2a;border:1px solid #17374e;border-radius:13px;padding:12px;font-size:12px;color:#9eb2c3}.back{display:inline-block;margin-bottom:14px;color:#8dccff;text-decoration:none;font-size:12px;font-weight:800}@media(max-width:520px){.grid{grid-template-columns:1fr}.card{min-height:125px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="logo">HAL <b>Garage</b> · Club</div><div class="user">ADMINISTRACIÓN</div></header>
+<main>
+<a class="back" href="../">← Volver a HAL Garage</a>
+<div class="eyebrow">CENTRO DE ADMINISTRACIÓN</div>
+<div class="title">⭐ Club HAL Garage</div>
+<div class="sub">Gestiona desde un solo lugar el programa de fidelización de clientes. Las opciones de este panel son internas y no muestran información de caja ni montos gastados por los clientes.</div>
+<section class="grid">
+<div class="card active"><div class="icon">⭐</div><h3>Campañas</h3><p>Configura multiplicadores de puntos, fechas, días y campañas activas.</p><a class="btn" href="./admin-campanas.html">Abrir Campañas</a></div>
+<div class="card active"><div class="icon">🎁</div><h3>Premios y descuentos</h3><p>Crea y administra premios, descuentos y recompensas del Club.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">👑</div><h3>Categorías</h3><p>Administra BRONCE, PLATA, ORO y VIP y sus reglas.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">⭐</div><h3>Puntos</h3><p>Consulta movimientos, bonificaciones y ajustes de puntos.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">🎟️</div><h3>Canjes</h3><p>Gestiona solicitudes, estados y entregas de premios.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">👥</div><h3>Clientes del Club</h3><p>Consulta miembros, categoría, puntos y vehículos asociados.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">📢</div><h3>Beneficios</h3><p>Define los beneficios disponibles para cada categoría.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">🔔</div><h3>Notificaciones</h3><p>Prepara avisos, promociones y comunicados para los clientes.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">📊</div><h3>Estadísticas</h3><p>Consulta la evolución y actividad del programa Club.</p><div class="disabled">Módulo en preparación</div></div>
+<div class="card"><div class="icon">⚙️</div><h3>Configuración</h3><p>Configuración general del programa de fidelización.</p><div class="disabled">Módulo en preparación</div></div>
+</section>
+<div class="note">🔐 <b>Importante:</b> este centro está separado de la vista del cliente. Aquí se administran beneficios y puntos, pero el cliente nunca verá cuánto dinero gastó.</div>
+</main></div>
+</body></html>
