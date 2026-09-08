@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111b"><title>HAL Garage · Campañas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#07111b;--panel:#0e1d2a;--line:#263b4e;--text:#f4f8fb;--muted:#91a4b7;--blue:#1595ff;--green:#49cf42;--red:#ff6262;--orange:#ffb52e}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}.app{max-width:720px;margin:auto;min-height:100vh;padding-bottom:40px}header{position:sticky;top:0;z-index:5;background:#091722;border-bottom:1px solid var(--line);padding:14px 15px;display:flex;justify-content:space-between;align-items:center}.logo{font-size:21px;font-weight:900}.logo b{color:#2ba9ff}.muted{color:var(--muted);font-size:12px}main{padding:15px}.title{font-size:25px;font-weight:850;margin:2px 0}.sub{color:var(--muted);font-size:13px;margin-bottom:15px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}label{display:block;font-size:12px;color:var(--muted);margin-top:7px}input,textarea,select{width:100%;background:#07131f;border:1px solid #2a4359;color:#fff;border-radius:9px;padding:10px;margin:5px 0 8px;font:inherit}textarea{min-height:70px;resize:vertical}.btn{border:0;border-radius:10px;padding:10px 13px;background:var(--blue);color:#fff;font-weight:750;cursor:pointer}.btn.alt{background:#152b3d}.btn.red{background:#b8323f}.row{display:flex;gap:8px;flex-wrap:wrap}.days{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 8px}.day{border:1px solid #2a4359;background:#07131f;color:#b9c8d5;border-radius:8px;padding:7px 9px;cursor:pointer}.day.on{background:#117ff0;border-color:#117ff0;color:#fff}.campaign{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#15334b;color:#8dccff}.badge.off{background:#39262a;color:#ff9b9b}.meta{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.empty{text-align:center;color:var(--muted);padding:25px}.msg{margin:8px 0;padding:9px;border-radius:9px;background:#122738;font-size:13px}.msg.err{background:#3b2025;color:#ffb0b0}.hidden{display:none!important}
+</style></head>
+<body><div class="app"><header><div class="logo">HAL <b>Garage</b> · Club</div><div class="muted" id="authState">Verificando...</div></header><main>
+<div class="title">⭐ Campañas de puntos</div><div class="sub">Configura multiplicadores automáticos por fechas y días. Las campañas no se muestran al cliente.</div>
+<div id="message" class="hidden"></div>
+<section class="card"><h3 id="formTitle">Nueva campaña</h3><input type="hidden" id="editId">
+<label>Nombre</label><input id="name" placeholder="⭐ Miércoles de puntos dobles">
+<label>Descripción</label><textarea id="description" placeholder="Suma el doble de puntos los miércoles"></textarea>
+<label>Multiplicador</label><select id="multiplier"><option value="1">×1</option><option value="2">×2</option><option value="3">×3</option><option value="4">×4</option><option value="5">×5</option></select>
+<label>Desde</label><input id="starts" type="date"><label>Hasta</label><input id="ends" type="date">
+<label>Días de aplicación (si no marcas ninguno, aplica todos los días)</label><div class="days" id="days"></div>
+<div class="row"><button class="btn" onclick="saveCampaign()">Guardar campaña</button><button class="btn alt hidden" id="cancel" onclick="resetForm()">Cancelar edición</button></div></section>
+<h3>Campañas registradas</h3><div id="list"><div class="empty">Cargando...</div></div>
+</main></div>
+<script>
+const SUPABASE_URL='https://maqnglazkhwtzskfddgc.supabase.co';
+const SUPABASE_KEY='sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const DAYS=[['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
+let rows=[];
+function $(id){return document.getElementById(id)}
+function msg(t,err=false){const e=$('message');e.textContent=t;e.className='msg'+(err?' err':'');setTimeout(()=>e.classList.add('hidden'),4500)}
+function initDays(){const box=$('days');box.innerHTML=DAYS.map(([n,v])=>`<button type="button" class="day" data-day="${v}" onclick="this.classList.toggle('on')">${n}</button>`).join('')}
+function selectedDays(){return [...document.querySelectorAll('.day.on')].map(x=>Number(x.dataset.day)).sort((a,b)=>a-b)}
+function setDays(arr=[]){document.querySelectorAll('.day').forEach(x=>x.classList.toggle('on',arr.map(Number).includes(Number(x.dataset.day))))}
+function fmtDate(s){return new Intl.DateTimeFormat('es-PE',{dateStyle:'medium'}).format(new Date(s+'T12:00:00'))}
+async function getUser(){const {data,error}=await db.auth.getUser();if(error||!data.user){$('authState').textContent='Sin sesión';return null} $('authState').textContent=data.user.email||'Usuario';return data.user}
+async function load(){const user=await getUser();if(!user){$('list').innerHTML='<div class="empty">Inicia sesión con una cuenta autorizada del sistema para administrar campañas.</div>';return}
+ const {data,error}=await db.from('club_point_campaigns').select('*').order('starts_at',{ascending:false}).order('created_at',{ascending:false});
+ if(error){$('list').innerHTML='<div class="empty">No se pudieron cargar las campañas.<br>'+esc(error.message)+'</div>';return}rows=data||[];render()}
+function render(){if(!rows.length){$('list').innerHTML='<div class="empty">Todavía no hay campañas.</div>';return}$('list').innerHTML=rows.map(x=>{const active=x.active;const ds=(x.weekdays||[]).length?DAYS.filter(d=>(x.weekdays||[]).includes(d[1])).map(d=>d[0]).join(', '):'Todos los días';return `<div class="card"><div class="campaign"><div><strong>${esc(x.name)}</strong> <span class="badge ${active?'':'off'}">${active?'ACTIVA':'INACTIVA'}</span><div class="meta">${esc(x.description||'')}<br>📅 ${fmtDate(x.starts_at)} → ${fmtDate(x.ends_at)}<br>⭐ Multiplicador: <b>×${x.multiplier}</b> · ${ds}</div></div><div class="actions"><button class="btn alt" onclick="editCampaign('${x.id}')">Editar</button><button class="btn ${active?'red':'green'}" onclick="toggleCampaign('${x.id}',${!active})">${active?'Desactivar':'Activar'}</button></div></div></div>`}).join('')}
+function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
+function editCampaign(id){const x=rows.find(r=>r.id===id);if(!x)return;$('editId').value=x.id;$('formTitle').textContent='Editar campaña';$('name').value=x.name||'';$('description').value=x.description||'';$('multiplier').value=x.multiplier;$('starts').value=x.starts_at;$('ends').value=x.ends_at;setDays(x.weekdays||[]);$('cancel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}
+function resetForm(){['editId','name','description','starts','ends'].forEach(id=>$(id).value='');$('multiplier').value='1';setDays([]);$('formTitle').textContent='Nueva campaña';$('cancel').classList.add('hidden')}
+async function saveCampaign(){const user=await getUser();if(!user)return msg('Debes iniciar sesión.',true);const name=$('name').value.trim(),description=$('description').value.trim(),multiplier=Number($('multiplier').value),starts_at=$('starts').value,ends_at=$('ends').value,weekdays=selectedDays(),id=$('editId').value;if(!name||!starts_at||!ends_at)return msg('Completa nombre y fechas.',true);if(ends_at<starts_at)return msg('La fecha final no puede ser anterior a la inicial.',true);
+ const duplicate=rows.find(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()&&x.starts_at===starts_at&&x.ends_at===ends_at&&Number(x.multiplier)===multiplier&&JSON.stringify((x.weekdays||[]).slice().sort((a,b)=>a-b))===JSON.stringify(weekdays));if(duplicate)return msg('Ya existe una campaña idéntica.',true);
+ const payload={name,description,multiplier,starts_at,ends_at,weekdays};let res=id?await db.from('club_point_campaigns').update(payload).eq('id',id):await db.from('club_point_campaigns').insert(payload);if(res.error){msg(res.error.message,true);return}msg(id?'Campaña actualizada.':'Campaña creada.');resetForm();load()}
+async function toggleCampaign(id,active){const user=await getUser();if(!user)return msg('Debes iniciar sesión.',true);const {error}=await db.from('club_point_campaigns').update({active}).eq('id',id);if(error)return msg(error.message,true);msg(active?'Campaña activada.':'Campaña desactivada.');load()}
+initDays();load();
+</script></body></html>
