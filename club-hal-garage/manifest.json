@@ -10,6 +10,6 @@
   "theme_color": "#0b67b2",
   "lang": "es-PE",
   "icons": [
-    {"src":"./logo-club.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+    {"src":"./club-icon.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any"}
   ]
 }
