@@ -14,6 +14,7 @@
       refresh_token: session.refresh_token
     });
     if (error || !data?.session) throw error || new Error('No se pudo establecer la sesión');
+    db.auth.startAutoRefresh?.();
     localStorage.setItem(SESSION_KEY, JSON.stringify({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token
@@ -65,7 +66,7 @@
 
   const oldLogout = window.logout;
   window.logout = async function() {
-    try { await db.auth.signOut(); } catch (_) {}
+    try { db.auth.stopAutoRefresh?.(); await db.auth.signOut(); } catch (_) {}
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem('HAL_FIXED_USER');
     HAL_USER = null;
