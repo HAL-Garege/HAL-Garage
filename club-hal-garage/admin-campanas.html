@@ -22,7 +22,8 @@
 <script>
 const SUPABASE_URL='https://maqnglazkhwtzskfddgc.supabase.co';
 const SUPABASE_KEY='sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_';
-const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const STAFF_SESSION_KEY='HAL_STAFF_SUPABASE_SESSION';
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{autoRefreshToken:true,persistSession:false,detectSessionInUrl:false}});
 const DAYS=[['Lun',1],['Mar',2],['Mié',3],['Jue',4],['Vie',5],['Sáb',6],['Dom',0]];
 let rows=[];
 function $(id){return document.getElementById(id)}
@@ -31,17 +32,34 @@ function initDays(){const box=$('days');box.innerHTML=DAYS.map(([n,v])=>`<button
 function selectedDays(){return [...document.querySelectorAll('.day.on')].map(x=>Number(x.dataset.day)).sort((a,b)=>a-b)}
 function setDays(arr=[]){document.querySelectorAll('.day').forEach(x=>x.classList.toggle('on',arr.map(Number).includes(Number(x.dataset.day))))}
 function fmtDate(s){return new Intl.DateTimeFormat('es-PE',{dateStyle:'medium'}).format(new Date(s+'T12:00:00'))}
-async function getUser(){const {data,error}=await db.auth.getUser();if(error||!data.user){$('authState').textContent='Sin sesión';return null} $('authState').textContent=data.user.email||'Usuario';return data.user}
-async function load(){const user=await getUser();if(!user){$('list').innerHTML='<div class="empty">Inicia sesión con una cuenta autorizada del sistema para administrar campañas.</div>';return}
+async function restoreStaffSession(){
+  try{
+    const raw=localStorage.getItem(STAFF_SESSION_KEY);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    if(!s?.access_token||!s?.refresh_token)return false;
+    const {data,error}=await db.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
+    if(error||!data?.session)throw error||new Error('Sesión inválida');
+    localStorage.setItem(STAFF_SESSION_KEY,JSON.stringify({access_token:data.session.access_token,refresh_token:data.session.refresh_token}));
+    return true;
+  }catch(e){localStorage.removeItem(STAFF_SESSION_KEY);return false}
+}
+async function getUser(){
+  await restoreStaffSession();
+  const {data,error}=await db.auth.getUser();
+  if(error||!data.user){$('authState').textContent='Sin sesión';return null}
+  $('authState').textContent=data.user.email||'Usuario';return data.user
+}
+async function load(){const user=await getUser();if(!user){$('list').innerHTML='<div class="empty">Primero inicia sesión en HAL Garage y vuelve a abrir Campañas.</div>';return}
  const {data,error}=await db.from('club_point_campaigns').select('*').order('starts_at',{ascending:false}).order('created_at',{ascending:false});
  if(error){$('list').innerHTML='<div class="empty">No se pudieron cargar las campañas.<br>'+esc(error.message)+'</div>';return}rows=data||[];render()}
 function render(){if(!rows.length){$('list').innerHTML='<div class="empty">Todavía no hay campañas.</div>';return}$('list').innerHTML=rows.map(x=>{const active=x.active;const ds=(x.weekdays||[]).length?DAYS.filter(d=>(x.weekdays||[]).includes(d[1])).map(d=>d[0]).join(', '):'Todos los días';return `<div class="card"><div class="campaign"><div><strong>${esc(x.name)}</strong> <span class="badge ${active?'':'off'}">${active?'ACTIVA':'INACTIVA'}</span><div class="meta">${esc(x.description||'')}<br>📅 ${fmtDate(x.starts_at)} → ${fmtDate(x.ends_at)}<br>⭐ Multiplicador: <b>×${x.multiplier}</b> · ${ds}</div></div><div class="actions"><button class="btn alt" onclick="editCampaign('${x.id}')">Editar</button><button class="btn ${active?'red':'green'}" onclick="toggleCampaign('${x.id}',${!active})">${active?'Desactivar':'Activar'}</button></div></div></div>`}).join('')}
 function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
 function editCampaign(id){const x=rows.find(r=>r.id===id);if(!x)return;$('editId').value=x.id;$('formTitle').textContent='Editar campaña';$('name').value=x.name||'';$('description').value=x.description||'';$('multiplier').value=x.multiplier;$('starts').value=x.starts_at;$('ends').value=x.ends_at;setDays(x.weekdays||[]);$('cancel').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}
 function resetForm(){['editId','name','description','starts','ends'].forEach(id=>$(id).value='');$('multiplier').value='1';setDays([]);$('formTitle').textContent='Nueva campaña';$('cancel').classList.add('hidden')}
-async function saveCampaign(){const user=await getUser();if(!user)return msg('Debes iniciar sesión.',true);const name=$('name').value.trim(),description=$('description').value.trim(),multiplier=Number($('multiplier').value),starts_at=$('starts').value,ends_at=$('ends').value,weekdays=selectedDays(),id=$('editId').value;if(!name||!starts_at||!ends_at)return msg('Completa nombre y fechas.',true);if(ends_at<starts_at)return msg('La fecha final no puede ser anterior a la inicial.',true);
+async function saveCampaign(){const user=await getUser();if(!user)return msg('Debes iniciar sesión en HAL Garage.',true);const name=$('name').value.trim(),description=$('description').value.trim(),multiplier=Number($('multiplier').value),starts_at=$('starts').value,ends_at=$('ends').value,weekdays=selectedDays(),id=$('editId').value;if(!name||!starts_at||!ends_at)return msg('Completa nombre y fechas.',true);if(ends_at<starts_at)return msg('La fecha final no puede ser anterior a la inicial.',true);
  const duplicate=rows.find(x=>x.id!==id&&x.name.trim().toLowerCase()===name.toLowerCase()&&x.starts_at===starts_at&&x.ends_at===ends_at&&Number(x.multiplier)===multiplier&&JSON.stringify((x.weekdays||[]).slice().sort((a,b)=>a-b))===JSON.stringify(weekdays));if(duplicate)return msg('Ya existe una campaña idéntica.',true);
  const payload={name,description,multiplier,starts_at,ends_at,weekdays};let res=id?await db.from('club_point_campaigns').update(payload).eq('id',id):await db.from('club_point_campaigns').insert(payload);if(res.error){msg(res.error.message,true);return}msg(id?'Campaña actualizada.':'Campaña creada.');resetForm();load()}
-async function toggleCampaign(id,active){const user=await getUser();if(!user)return msg('Debes iniciar sesión.',true);const {error}=await db.from('club_point_campaigns').update({active}).eq('id',id);if(error)return msg(error.message,true);msg(active?'Campaña activada.':'Campaña desactivada.');load()}
+async function toggleCampaign(id,active){const user=await getUser();if(!user)return msg('Debes iniciar sesión en HAL Garage.',true);const {error}=await db.from('club_point_campaigns').update({active}).eq('id',id);if(error)return msg(error.message,true);msg(active?'Campaña activada.':'Campaña desactivada.');load()}
 initDays();load();
 </script></body></html>
