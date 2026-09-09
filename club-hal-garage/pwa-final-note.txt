@@ -1,0 +1,1 @@
+Final PWA fix uses raster icon files.
