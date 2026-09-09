@@ -1,93 +1,49 @@
-// HAL Garage Club: ajustes aislados para administración de premios, canjes y puntos.
-// No toca tablas de gestión ni la relación de historial; usa únicamente tablas club_*.
-(() => {
-  const isModules=/\/club-hal-garage\/admin-modulos\.html$/.test(location.pathname);
-  if(!isModules)return;
-  const sb=window.supabase;
-  if(!sb?.createClient)return;
+// HAL Garage Club: mejoras administrativas aisladas para premios, canjes, puntos y notificaciones.
+// Solo actúa en la administración del Club y usa tablas club_*; no modifica la lógica de gestión/historial.
+(()=>{
+  if(!/\/club-hal-garage\/admin-modulos\.html$/.test(location.pathname))return;
+  const sb=window.supabase;if(!sb?.createClient)return;
   const db=sb.createClient('https://maqnglazkhwtzskfddgc.supabase.co','sb_publishable_gIB6HrGHT3X7CwIjAHGO8Q_7hYro-I_',{auth:{autoRefreshToken:true,persistSession:false,detectSessionInUrl:false}});
-  const moduleName=new URLSearchParams(location.search).get('module');
+  const moduleName=new URLSearchParams(location.search).get('module')||'rewards';
   const cats=['','BRONCE','PLATA','ORO','VIP'];
-  const catLabel=c=>c||'Todos';
-  const esc=s=>String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
-  let patched=false;
-
-  function audienceControl(id){
-    return `<div><label>¿Para quién es este premio?</label><select id="${id}">${cats.map(c=>`<option value="${c}">${catLabel(c)}</option>`).join('')}</select></div>`;
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s??'').replace(/[&<>\'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
+  const fmt=s=>s?new Intl.DateTimeFormat('es-PE',{dateStyle:'medium',timeStyle:'short'}).format(new Date(s)):'-';
+  const msg=(t,err=false)=>{const e=$('message');if(!e)return;e.textContent=t;e.className='msg'+(err?' err':'');setTimeout(()=>e.classList.add('hidden'),4500)};
+  let members=[];
+  async function loadMembers(){
+    const [m,c]=await Promise.all([db.from('club_members').select('id,category,points_balance,customer_id,member_code,active').order('created_at',{ascending:true}),db.from('club_customers').select('id,full_name,phone').order('full_name',{ascending:true})]);
+    if(m.error)throw m.error;if(c.error)throw c.error;const cm=new Map((c.data||[]).map(x=>[x.id,x]));members=(m.data||[]).map(x=>({...x,customer:cm.get(x.customer_id)||{}}));return members;
   }
+  const nameOf=m=>m?.customer?.full_name||m?.customer?.phone||m?.member_code||m?.id||'Miembro';
+  function audienceControl(id,label='¿Para quién?'){return `<div><label>${label}</label><select id="${id}">${cats.map(c=>`<option value="${c}">${c||'Todos'}</option>`).join('')}</select></div>`}
 
   function patchRewardForm(){
     if(moduleName!=='rewards')return;
-    const title=[...document.querySelectorAll('#content h3')].find(x=>x.textContent.includes('Premio del Club'));
-    const card=title?.closest('.card');
-    const old=document.getElementById('rcat');
-    if(card && old){
-      const wrap=old.closest('div');
-      if(wrap)wrap.outerHTML=audienceControl('rcat');
-    }
-    if(card && !document.getElementById('rcat')){
-      const grid=card.querySelector('.grid2');
-      if(grid)grid.insertAdjacentHTML('beforeend',audienceControl('rcat'));
-    }
-    const pt=[...document.querySelectorAll('#content h3')].find(x=>x.textContent.includes('Producto del catálogo'));
-    const pcard=pt?.closest('.card');
-    const oldp=document.getElementById('pcat');
-    if(pcard && oldp){
-      const wrap=oldp.closest('div'); if(wrap)wrap.outerHTML=audienceControl('pcat');
-    }
-    if(pcard && !document.getElementById('pcat')){
-      const grid=pcard.querySelector('.grid2');
-      if(grid)grid.insertAdjacentHTML('beforeend',audienceControl('pcat'));
-    }
-    if(!patched && typeof window.saveReward==='function' && typeof window.saveProduct==='function'){
-      const oldSR=window.saveReward, oldSP=window.saveProduct;
-      window.saveReward=async()=>{
-        const id=document.getElementById('rid')?.value;
-        const p={title:document.getElementById('rtitle')?.value.trim(),description:document.getElementById('rdesc')?.value.trim(),reward_type:document.getElementById('rtype')?.value,stock:document.getElementById('rstock')?.value===''?null:Number(document.getElementById('rstock')?.value),starts_at:document.getElementById('rstart')?.value||null,expires_at:document.getElementById('rexp')?.value||null,active:!!document.getElementById('ractive')?.checked,category:document.getElementById('rcat')?.value||null};
-        if(!p.title)return window.msg?.('Ingresa un título.',true);
-        const r=id?await db.from('club_rewards').update(p).eq('id',id):await db.from('club_rewards').insert(p);
-        if(r.error)return window.msg?.(r.error.message,true); window.msg?.(id?'Premio actualizado.':'Premio creado.'); setTimeout(()=>location.reload(),250);
-      };
-      window.saveProduct=async()=>{
-        const id=document.getElementById('pid')?.value;
-        const p={name:document.getElementById('pname')?.value.trim(),description:document.getElementById('pdesc')?.value.trim(),points_cost:Math.max(0,Number(document.getElementById('pcost')?.value||0)),stock:document.getElementById('pstock')?.value===''?null:Number(document.getElementById('pstock')?.value),image_path:document.getElementById('pimage')?.value.trim()||null,active:!!document.getElementById('pactive')?.checked,category:document.getElementById('pcat')?.value||null,updated_at:new Date().toISOString()};
-        if(!p.name)return window.msg?.('Ingresa un nombre.',true);
-        const r=id?await db.from('club_catalog_products').update(p).eq('id',id):await db.from('club_catalog_products').insert(p);
-        if(r.error)return window.msg?.(r.error.message,true); window.msg?.(id?'Producto actualizado.':'Producto creado.'); setTimeout(()=>location.reload(),250);
-      };
-      patched=true;
+    const title=[...document.querySelectorAll('#content h3')].find(x=>x.textContent.includes('Premio del Club'));const card=title?.closest('.card');
+    if(card&&!$('rcat')){const grid=card.querySelector('.grid2');if(grid)grid.insertAdjacentHTML('beforeend',audienceControl('rcat','¿Para quién puede canjearlo?'))}
+    const pt=[...document.querySelectorAll('#content h3')].find(x=>x.textContent.includes('Producto del catálogo'));const pcard=pt?.closest('.card');
+    if(pcard&&!$('pcat')){const grid=pcard.querySelector('.grid2');if(grid)grid.insertAdjacentHTML('beforeend',audienceControl('pcat','¿Para quién puede canjearlo?'))}
+    if(!window.__halRewardPatched&&typeof window.saveReward==='function'&&typeof window.saveProduct==='function'){
+      window.__halRewardPatched=true;
+      window.saveReward=async()=>{const id=$('rid')?.value;const p={title:$('rtitle')?.value.trim(),description:$('rdesc')?.value.trim(),reward_type:$('rtype')?.value,stock:$('rstock')?.value===''?null:Number($('rstock')?.value),starts_at:$('rstart')?.value||null,expires_at:$('rexp')?.value||null,active:!!$('ractive')?.checked,category:$('rcat')?.value||null};if(!p.title)return msg('Ingresa un título.',true);const r=id?await db.from('club_rewards').update(p).eq('id',id):await db.from('club_rewards').insert(p);if(r.error)return msg(r.error.message,true);msg(id?'Premio actualizado.':'Premio creado.');setTimeout(()=>location.reload(),250)};
+      window.saveProduct=async()=>{const id=$('pid')?.value;const p={name:$('pname')?.value.trim(),description:$('pdesc')?.value.trim(),points_cost:Math.max(0,Number($('pcost')?.value||0)),stock:$('pstock')?.value===''?null:Number($('pstock')?.value),image_path:$('pimage')?.value.trim()||null,active:!!$('pactive')?.checked,category:$('pcat')?.value||null,updated_at:new Date().toISOString()};if(!p.name)return msg('Ingresa un nombre.',true);const r=id?await db.from('club_catalog_products').update(p).eq('id',id):await db.from('club_catalog_products').insert(p);if(r.error)return msg(r.error.message,true);msg(id?'Producto actualizado.':'Producto creado.');setTimeout(()=>location.reload(),250)};
+      const oldER=window.editReward,oldEP=window.editProduct;window.editReward=async id=>{await oldER?.(id);const r=await db.from('club_rewards').select('category').eq('id',id).maybeSingle();if(!r.error&&$('rcat'))$('rcat').value=r.data?.category||''};window.editProduct=async id=>{await oldEP?.(id);const r=await db.from('club_catalog_products').select('category').eq('id',id).maybeSingle();if(!r.error&&$('pcat'))$('pcat').value=r.data?.category||''};
     }
   }
 
-  async function patchPoints(){
-    if(moduleName!=='points')return;
-    const members=(await db.from('club_members').select('id,category,points_balance,customer_id,club_customers(full_name,phone)').order('created_at',{ascending:false})).data||[];
-    document.querySelectorAll('select').forEach(sel=>{
-      if(sel.id==='pmember' || sel.id.includes('member')){
-        [...sel.options].forEach(o=>{const m=members.find(x=>x.id===o.value);if(m)o.textContent=`${m.club_customers?.full_name||'Cliente'} · ${m.points_balance} pts · ${m.category}`;});
-      }
-    });
-    document.querySelectorAll('#content .item').forEach(item=>{
-      if(item.dataset.clubNameDone)return;
-      const text=item.textContent||'';
-      const m=members.find(x=>text.includes(x.id));
-      if(m){item.innerHTML=item.innerHTML.replaceAll(m.id,esc(m.club_customers?.full_name||'Cliente'));item.dataset.clubNameDone='1';}
-    });
+  async function renderPoints(){
+    try{await loadMembers();const {data:tx,error}=await db.from('club_point_transactions').select('*').order('created_at',{ascending:false});if(error)throw error;const names=new Map(members.map(m=>[m.id,nameOf(m)]));
+      $('content').innerHTML=`<section class="card"><h3>⭐ Ajuste manual de puntos</h3><label>Selecciona el miembro</label><select id="halPointMember"><option value="">Selecciona un miembro</option>${members.map(m=>`<option value="${m.id}">${esc(nameOf(m))} · ${esc(m.category)} · ${Number(m.points_balance||0)} pts</option>`).join('')}</select><div class="grid2"><div><label>Puntos a ajustar</label><input id="halPointAmount" type="number" step="1" placeholder="+20 o -2"></div><div><label>Motivo</label><select id="halPointReason"><option>Creación</option><option>Corrección</option><option>Promoción</option><option>Compensación</option><option>Otro</option></select></div></div><label>Detalle del motivo (opcional)</label><input id="halPointNote" placeholder="Ej.: puntos por promoción especial"><div class="row"><button class="btn" onclick="halApplyPoints()">Aplicar ajuste</button></div></section><section class="card"><h3>Movimientos realizados</h3><div class="list">${tx?.length?tx.map(x=>`<div class="item"><b>${esc(names.get(x.member_id)||'Miembro')}</b> <span class="badge">${esc(x.transaction_type)}</span><div class="meta"><strong>${Number(x.points)>0?'+':''}${Number(x.points||0)} puntos</strong><br>${esc(x.description||'Sin motivo')}<br>${fmt(x.created_at)}</div></div>`).join(''):'<div class="empty">No hay movimientos.</div>'}</div></section><section class="card"><h3>⚡ Campañas de puntos</h3><div class="meta">Configura puntos dobles, triples y otros multiplicadores por fechas y días.</div><div class="row" style="margin-top:9px"><button class="btn" onclick="location.href='./admin-campanas.html'">Administrar campañas</button></div></section>`;
+    }catch(e){$('content').innerHTML=`<div class="empty">No se pudo cargar puntos.<br>${esc(e.message)}</div>`}
   }
+  window.halApplyPoints=async()=>{try{const id=$('halPointMember')?.value;const amount=Number($('halPointAmount')?.value);const reason=$('halPointReason')?.value;const note=$('halPointNote')?.value.trim();if(!id||!Number.isInteger(amount)||amount===0)return msg('Selecciona un miembro e indica un ajuste entero distinto de 0.',true);const m=members.find(x=>x.id===id);const next=Number(m?.points_balance||0)+amount;if(!m)return msg('Miembro no encontrado.',true);if(next<0)return msg('El saldo no puede quedar negativo.',true);const a=await db.from('club_point_transactions').insert({member_id:id,points:amount,transaction_type:'ADJUSTMENT',description:reason+(note?' — '+note:'')});if(a.error)throw a.error;const b=await db.from('club_members').update({points_balance:next,updated_at:new Date().toISOString()}).eq('id',id);if(b.error)throw b.error;msg('Ajuste aplicado correctamente.');renderPoints()}catch(e){msg(e.message,true)}};
 
-  async function patchRedemptions(){
-    if(moduleName!=='redemptions')return;
-    const members=(await db.from('club_members').select('id,category,points_balance,customer_id,club_customers(full_name,phone)')).data||[];
-    document.querySelectorAll('#content .item').forEach(item=>{
-      if(item.dataset.clubRedemptionDone)return;
-      const html=item.innerHTML;
-      let changed=false;
-      members.forEach(m=>{const name=m.club_customers?.full_name||'Cliente';if(html.includes(m.id)){item.innerHTML=item.innerHTML.replaceAll(m.id,esc(name));changed=true;}});
-      if(changed)item.dataset.clubRedemptionDone='1';
-    });
-  }
+  async function renderRedemptions(){try{await loadMembers();const {data:r,error}=await db.from('club_redemptions').select('*, club_rewards(title), club_catalog_products(name)').order('created_at',{ascending:false});if(error)throw error;const names=new Map(members.map(m=>[m.id,nameOf(m)]));$('content').innerHTML=`<section class="card"><h3>🎟️ Canjes</h3><div class="meta">Los canjes muestran el nombre del cliente, no el código interno.</div></section><div class="list">${r?.length?r.map(x=>`<div class="item"><b>${esc(names.get(x.member_id)||'Miembro')}</b> <span class="badge">${esc(x.status)}</span><div class="meta">🎁 ${esc(x.club_rewards?.title||x.club_catalog_products?.name||'Premio')}<br>⭐ ${Number(x.points_spent||0)} puntos · Código: ${esc(x.pickup_code||'-')}<br>📅 ${fmt(x.created_at)}</div></div>`).join(''):'<div class="empty">No hay canjes registrados.</div>'}</div>`}catch(e){$('content').innerHTML=`<div class="empty">No se pudieron cargar los canjes.<br>${esc(e.message)}</div>`}}
 
-  function patch(){patchRewardForm();patchPoints();patchRedemptions();}
-  const obs=new MutationObserver(()=>setTimeout(patch,80));obs.observe(document.documentElement,{subtree:true,childList:true});
-  setTimeout(patch,150);setTimeout(patch,700);
+  async function renderNotifications(){try{await loadMembers();const {data:n,error}=await db.from('club_notifications').select('*').order('created_at',{ascending:false});if(error)throw error;const names=new Map(members.map(m=>[m.id,nameOf(m)]));$('content').innerHTML=`<section class="card"><h3>🔔 Nueva notificación</h3><label>¿Para quién?</label><select id="halNotifAudience"><option value="ALL">Todos</option><option value="BRONCE">Bronce</option><option value="PLATA">Plata</option><option value="ORO">Oro</option><option value="VIP">VIP</option></select><label>Título</label><input id="halNotifTitle" placeholder="🎉 Promoción especial en HAL Garage"><label>Mensaje</label><textarea id="halNotifBody" placeholder="Este sábado tenemos puntos dobles..."></textarea><div class="grid2"><div><label>Tipo</label><select id="halNotifType"><option value="PROMOTION">Promoción</option><option value="DOUBLE_POINTS">Puntos dobles</option><option value="POINTS">Puntos</option><option value="REWARD">Premio</option><option value="GENERAL">General</option></select></div><div><label>Envío</label><select id="halNotifWhen"><option value="now">Ahora</option></select></div></div><div class="row"><button class="btn" onclick="halSendNotification()">Publicar notificación</button></div><div class="small" style="margin-top:8px">“Todos” crea una notificación para cada miembro activo del Club. El canal de WhatsApp es independiente.</div></section><section class="card"><h3>Últimas notificaciones</h3><div class="list">${(n||[]).slice(0,50).map(x=>`<div class="item"><b>${esc(x.title)}</b><div class="meta">👤 ${esc(x.member_id?names.get(x.member_id)||'Miembro':(x.audience_category||'Todos'))}<br>${esc(x.body)}<br>${fmt(x.created_at)}</div></div>`).join('')||'<div class="empty">No hay notificaciones.</div>'}</div></section>`}catch(e){$('content').innerHTML=`<div class="empty">No se pudieron cargar las notificaciones.<br>${esc(e.message)}</div>`}}
+  window.halSendNotification=async()=>{try{await loadMembers();const audience=$('halNotifAudience')?.value;const title=$('halNotifTitle')?.value.trim();const body=$('halNotifBody')?.value.trim();const type=$('halNotifType')?.value||'GENERAL';if(!title||!body)return msg('Completa título y mensaje.',true);const targets=members.filter(m=>m.active&&(audience==='ALL'||m.category===audience));if(!targets.length)return msg('No hay miembros activos en ese público.',true);const rows=targets.map(m=>({member_id:m.id,audience_category:audience==='ALL'?null:audience,title,body,notification_type:type}));const {error}=await db.from('club_notifications').insert(rows);if(error)throw error;msg(`Notificación publicada para ${targets.length} miembro(s).`);renderNotifications()}catch(e){msg(e.message,true)}};
+
+  async function install(){if(moduleName==='points'){await renderPoints();return}if(moduleName==='redemptions'){await renderRedemptions();return}if(moduleName==='notifications'){await renderNotifications();return}if(moduleName==='categories'){location.replace('./admin-modulos.html?module=rewards');return}if(moduleName==='rewards'){patchRewardForm()}}
+  const obs=new MutationObserver(()=>{if(moduleName==='rewards'){setTimeout(patchRewardForm,60)}});obs.observe(document.documentElement,{subtree:true,childList:true});setTimeout(install,450);
 })();
