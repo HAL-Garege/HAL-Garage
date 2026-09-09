@@ -1,0 +1,1 @@
+Temporary status file; will be removed after the PWA icon commit.
