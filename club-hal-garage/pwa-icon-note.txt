@@ -1,0 +1,1 @@
+Club HAL Garage PWA uses dedicated raster icons for Android installation.
