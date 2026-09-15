@@ -1,12 +1,44 @@
-// HAL Garage - Fecha manual de servicio/venta
-// Permite registrar la fecha real del servicio. Las fotos de placa y comprobante
-// ya NO son obligatorias y no bloquean el registro de la venta.
+// HAL Garage - Fecha manual de servicio/venta + comisión de referidos
+// Mantiene el flujo actual de venta y añade la vinculación automática con Comisionistas.
 (function(){
   function localDateISO(d=new Date()){
-    const y=d.getFullYear();
-    const m=String(d.getMonth()+1).padStart(2,'0');
-    const day=String(d.getDate()).padStart(2,'0');
+    const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0');
     return `${y}-${m}-${day}`;
+  }
+
+  async function findCommissionerForClient(clientId){
+    const {data,error}=await db.from('commissioner_referrals').select('id,commissioner_id,referred_at,active').eq('client_id',clientId).eq('active',true).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(error) return null;
+    return data||null;
+  }
+
+  async function createCommissionForSale(sale, clientId){
+    const referral=await findCommissionerForClient(clientId);
+    if(!referral) return;
+
+    // Evita duplicar comisión si la venta se procesa nuevamente.
+    const {data:existing}=await db.from('commissioner_earnings').select('id').eq('sale_id',sale.id).maybeSingle();
+    if(existing) return;
+
+    // Primera visita = primera venta confirmada del cliente desde su referencia.
+    const referredDate=(referral.referred_at||'').slice(0,10);
+    const {data:priorSales}=await db.from('sales').select('id,service_date,created_at').eq('client_id',clientId).eq('status','confirmed').order('service_date',{ascending:true});
+    const eligible=(priorSales||[]).filter(s=>s.id!==sale.id && (!referredDate || String(s.service_date||s.created_at||'').slice(0,10)>=referredDate));
+    const visitType=eligible.length===0?'first':'repeat';
+    const amount=visitType==='first'?5:3;
+
+    const {error}=await db.from('commissioner_earnings').insert({
+      commissioner_id:referral.commissioner_id,
+      sale_id:sale.id,
+      visit_type:visitType,
+      amount,
+      status:'pending'
+    });
+    if(error) throw error;
+
+    // Guarda también el comisionista directamente en la venta para consultas administrativas.
+    const {error:ue}=await db.from('sales').update({commissioner_id:referral.commissioner_id}).eq('id',sale.id);
+    if(ue) throw ue;
   }
 
   window.salePage=async function(){
@@ -35,11 +67,15 @@
     if(serviceDate>today)return toast('La fecha del servicio no puede ser futura.',true);
     const total=saleItems.reduce((a,x)=>a+x.subtotal,0);
     try{
-      const {data:sale,error}=await db.from('sales').insert({client_id:selectedClient.id,vehicle_id:selectedVehicle.id,total,status:'confirmed',service_date:serviceDate,...createdBy()}).select().single();if(error)throw error;
+      // Si el cliente tiene un referido activo, la venta queda vinculada automáticamente.
+      const referral=await findCommissionerForClient(selectedClient.id);
+      const commissionerId=referral?.commissioner_id||null;
+      const {data:sale,error}=await db.from('sales').insert({client_id:selectedClient.id,vehicle_id:selectedVehicle.id,total,status:'confirmed',service_date:serviceDate,commissioner_id:commissionerId,...createdBy()}).select().single();if(error)throw error;
       const {error:ie}=await db.from('sale_items').insert(saleItems.map(x=>({...x,sale_id:sale.id})));if(ie)throw ie;
       const {error:pe}=await db.from('payments').insert({sale_id:sale.id,method:salePayment,amount:total,...createdBy()});if(pe)throw pe;
       const {error:ce}=await db.from('cash_movements').insert({movement_type:'income',payment_method:salePayment,amount:total,sale_id:sale.id,...createdBy()});if(ce)throw ce;
-      toast('Venta registrada correctamente');selectedClient=null;selectedVehicle=null;saleItems=[];setTimeout(()=>go('dashboard'),700);
+      if(referral) await createCommissionForSale(sale,selectedClient.id);
+      toast(referral?'Venta registrada · comisión generada':'Venta registrada correctamente');selectedClient=null;selectedVehicle=null;saleItems=[];setTimeout(()=>go('dashboard'),700);
     }catch(e){toast(e.message,true)}
   };
 })();
