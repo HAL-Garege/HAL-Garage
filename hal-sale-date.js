@@ -25,7 +25,8 @@
     const {data:priorSales}=await db.from('sales').select('id,service_date,created_at').eq('client_id',clientId).eq('status','confirmed').order('service_date',{ascending:true});
     const eligible=(priorSales||[]).filter(s=>s.id!==sale.id && (!referredDate || String(s.service_date||s.created_at||'').slice(0,10)>=referredDate));
     const visitType=eligible.length===0?'first':'repeat';
-    const amount=visitType==='first'?5:3;
+    // Primera visita: 25% del total. Visitas posteriores: 15% del total.
+    const amount=Number((Number(sale.total||0)*(visitType==='first'?0.25:0.15)).toFixed(2));
 
     const {error}=await db.from('commissioner_earnings').insert({
       commissioner_id:referral.commissioner_id,
