@@ -15,8 +15,6 @@
       <div class="row"><b>🚗 Registrar vehículo</b><button class="btn alt" style="width:auto;margin:0" onclick="document.getElementById('halVehicleModal')?.remove()">Cerrar</button></div>
       <label>Placa</label><input id="halVehiclePlate" placeholder="Ej. ABC123" maxlength="12" autocomplete="off">
       <label>Tipo de vehículo</label><select id="halVehicleType">${opts.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>
-      <label>Marca (opcional)</label><input id="halVehicleBrand" placeholder="Toyota, Kia, Ford...">
-      <label>Modelo (opcional)</label><input id="halVehicleModel" placeholder="Hilux, Sportage, Ranger...">
       <button class="btn green" onclick="saveVehicleCategoryFix('${clientId}')">REGISTRAR VEHÍCULO</button>
     </div></div>`);
   };
@@ -24,12 +22,10 @@
   window.saveVehicleCategoryFix = async function(clientId){
     const plate=document.getElementById('halVehiclePlate')?.value.trim().toUpperCase();
     const typeId=document.getElementById('halVehicleType')?.value;
-    const brand=document.getElementById('halVehicleBrand')?.value.trim()||null;
-    const model=document.getElementById('halVehicleModel')?.value.trim()||null;
     if(!plate) return toast('Ingresa la placa.',true);
     if(!typeId) return toast('Selecciona el tipo de vehículo.',true);
     try{
-      const {data,error}=await db.from('vehicles').insert({client_id:clientId,vehicle_type_id:typeId,plate,brand,model,...createdBy()}).select().single();
+      const {data,error}=await db.from('vehicles').insert({client_id:clientId,vehicle_type_id:typeId,plate,...createdBy()}).select().single();
       if(error) throw error;
       const type=vehicleTypes.find(t=>t.id===typeId);
       document.getElementById('halVehicleModal')?.remove();
