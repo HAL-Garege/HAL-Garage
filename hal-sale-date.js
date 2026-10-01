@@ -20,13 +20,21 @@
     const {data:existing}=await db.from('commissioner_earnings').select('id').eq('sale_id',sale.id).maybeSingle();
     if(existing) return;
 
-    // Primera visita = primera venta confirmada del cliente desde su referencia.
+    // La comisión solo aplica durante los 3 meses posteriores al registro del referido.
+    const referredAt=referral.referred_at ? new Date(referral.referred_at) : null;
+    const saleDate=new Date(sale.service_date || sale.created_at || new Date());
+    if(referredAt){
+      const expiry=new Date(referredAt);
+      expiry.setMonth(expiry.getMonth()+3);
+      if(saleDate >= expiry) return;
+    }
+
+    // Primera venta desde la referencia = 20%. Visitas posteriores = 10%.
     const referredDate=(referral.referred_at||'').slice(0,10);
     const {data:priorSales}=await db.from('sales').select('id,service_date,created_at').eq('client_id',clientId).eq('status','confirmed').order('service_date',{ascending:true});
     const eligible=(priorSales||[]).filter(s=>s.id!==sale.id && (!referredDate || String(s.service_date||s.created_at||'').slice(0,10)>=referredDate));
     const visitType=eligible.length===0?'first':'repeat';
-    // Primera visita: 25% del total. Visitas posteriores: 15% del total.
-    const amount=Number((Number(sale.total||0)*(visitType==='first'?0.25:0.15)).toFixed(2));
+    const amount=Number((Number(sale.total||0)*(visitType==='first'?0.20:0.10)).toFixed(2));
 
     const {error}=await db.from('commissioner_earnings').insert({
       commissioner_id:referral.commissioner_id,
