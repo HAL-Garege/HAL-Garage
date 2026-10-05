@@ -53,4 +53,10 @@
       <div class="card"><b>Gastos</b>${expenses.map(e=>`<div class="result row"><span>${esc(e.description||e.category||'Gasto')}</span><b class="red">-${money(e.amount)}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">No hay gastos para esta fecha.</div>'}</div>`;
     }catch(e){setHTML(`<div class="title">Caja</div><div class="errorbox">${esc(e.message)}`+`</div>`)}
   };
+
+  // Historial: la fecha visible debe ser la fecha real del servicio.
+  // Si una venta se registra hoy con service_date de ayer, el historial mostrará ayer.
+  window.saleHistoryDate = function(sale){
+    return saleDate(sale);
+  };
 })();
