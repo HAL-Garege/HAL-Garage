@@ -6,6 +6,10 @@
     return `${y}-${m}-${day}`;
   }
   function saleDate(x){return x.service_date||String(x.created_at||'').slice(0,10)}
+  function displaySaleDate(x){
+    const d=saleDate(x);
+    return d ? new Date(d+'T12:00:00').toLocaleDateString('es-PE') : '';
+  }
 
   window.dashboard=async function(){
     try{
@@ -49,14 +53,11 @@
       const net=income-expense;
       setHTML(`<div class="title">Caja</div><div class="date">${global?'Ingresos y gastos del día por fecha de servicio':'Movimientos de hoy'}</div>
       <div class="grid"><div class="card"><div class="muted">Ingresos</div><div class="metric green">${money(income)}</div></div><div class="card"><div class="muted">Gastos</div><div class="metric red">${money(expense)}</div></div><div class="card"><div class="muted">Neto</div><div class="metric ${net>=0?'blue':'red'}">${money(net)}</div></div></div>
-      <div class="card"><b>Ventas del ${new Date(today+'T12:00:00').toLocaleDateString('es-PE')}</b>${sales.map(s=>`<div class="result row"><span>Venta #${esc(s.sale_number||'')}<br><span class="muted">${money(s.total)}</span></span><b class="green">Ingreso</b></div>`).join('')||'<div class="muted" style="margin-top:8px">No hay ventas para esta fecha.</div>'}</div>
+      <div class="card"><b>Ventas del ${new Date(today+'T12:00:00').toLocaleDateString('es-PE')}</b>${sales.map(s=>`<div class="result row"><span>Venta #${esc(s.sale_number||'')}<br><span class="muted">${displaySaleDate(s)} · ${money(s.total)}</span></span><b class="green">Ingreso</b></div>`).join('')||'<div class="muted" style="margin-top:8px">No hay ventas para esta fecha.</div>'}</div>
       <div class="card"><b>Gastos</b>${expenses.map(e=>`<div class="result row"><span>${esc(e.description||e.category||'Gasto')}</span><b class="red">-${money(e.amount)}</b></div>`).join('')||'<div class="muted" style="margin-top:8px">No hay gastos para esta fecha.</div>'}</div>`;
     }catch(e){setHTML(`<div class="title">Caja</div><div class="errorbox">${esc(e.message)}`+`</div>`)}
   };
 
-  // Historial: la fecha visible debe ser la fecha real del servicio.
-  // Si una venta se registra hoy con service_date de ayer, el historial mostrará ayer.
-  window.saleHistoryDate = function(sale){
-    return saleDate(sale);
-  };
+  // Historial y Caja usan la misma fecha real del servicio.
+  window.saleHistoryDate = function(sale){return saleDate(sale);};
 })();
